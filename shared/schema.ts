@@ -15,7 +15,7 @@ export const products = pgTable("products", {
   name: text("name").notNull(),
   sku: text("sku").notNull().unique(),
   description: text("description"),
-  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  price: text("price").notNull(),
   stockLevel: integer("stock_level").notNull().default(0),
   minStockLevel: integer("min_stock_level").default(0),
   unit: text("unit").default("db"),
@@ -39,17 +39,24 @@ export const orders = pgTable("orders", {
   contactId: integer("contact_id").notNull(),
   orderDate: timestamp("order_date").notNull().defaultNow(),
   status: text("status").notNull(), // pending, completed, cancelled
-  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  total: text("total").notNull(),
   items: jsonb("items").notNull(), // Array of {productId, quantity, price}
   invoiceNumber: text("invoice_number"),
   notes: text("notes"),
 });
 
-// Schema validations
+// Schema validations with proper type transformations
 export const insertUserSchema = createInsertSchema(users);
-export const insertProductSchema = createInsertSchema(products);
+
+export const insertProductSchema = createInsertSchema(products, {
+  price: z.string().or(z.number()).transform(val => String(val)),
+});
+
 export const insertContactSchema = createInsertSchema(contacts);
-export const insertOrderSchema = createInsertSchema(orders);
+
+export const insertOrderSchema = createInsertSchema(orders, {
+  total: z.string().or(z.number()).transform(val => String(val)),
+});
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -67,5 +74,5 @@ export type InsertOrder = z.infer<typeof insertOrderSchema>;
 export type OrderItem = {
   productId: number;
   quantity: number;
-  price: number;
+  price: string;
 };

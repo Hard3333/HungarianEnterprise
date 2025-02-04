@@ -1,4 +1,5 @@
 import { StatsCards } from "@/components/dashboard/stats-cards";
+import { Charts } from "@/components/dashboard/charts";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 
@@ -15,8 +16,9 @@ export default function Dashboard() {
               Üdvözöljük az ERP rendszerben
             </p>
           </div>
-          
+
           <StatsCards />
+          <Charts />
         </main>
       </div>
     </div>

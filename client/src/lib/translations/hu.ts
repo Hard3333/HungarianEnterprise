@@ -5,12 +5,26 @@ export const hu = {
   username: "Felhasználónév",
   password: "Jelszó",
   logout: "Kijelentkezés",
-  
+
   // Navigation
   dashboard: "Irányítópult",
   inventory: "Készlet",
   orders: "Rendelések",
   contacts: "Kapcsolatok",
+  warehouse: "Raktár",
+  sales: "Értékesítés",
+  finances: "Pénzügyek",
+  company: "Vállalat",
+  stockLevels: "Készletszintek",
+  incomingDeliveries: "Beérkező szállítmányok",
+  invoices: "Számlák",
+  customers: "Ügyfelek",
+  bills: "Számlák",
+  reports: "Jelentések",
+  accounting: "Könyvelés",
+  employees: "Alkalmazottak",
+  suppliers: "Beszállítók",
+  settings: "Beállítások",
 
   // Products
   products: "Termékek",
@@ -44,17 +58,21 @@ export const hu = {
   total: "Összesen",
   invoiceNumber: "Számlaszám",
 
+  // Charts
+  salesChart: "Értékesítési statisztika",
+  stockLevels: "Készletszintek",
+
   // Validation messages
   required: "Kötelező mező",
   invalidEmail: "Érvénytelen e-mail cím",
   minLength: "Minimum {min} karakter szükséges",
   invalidNumber: "Érvénytelen szám",
-  
+
   // Status messages
   pending: "Függőben",
   completed: "Teljesítve",
   cancelled: "Törölve",
-  
+
   // Alerts
   confirmDelete: "Biztosan törölni szeretné?",
   success: "Sikeres művelet",
