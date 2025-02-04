@@ -20,7 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type MenuItem = {
@@ -73,16 +73,25 @@ const navigation: MenuItem[] = [
 function isActive(location: string, item: MenuItem): boolean {
   if (item.href) return location === item.href;
   if (item.submenu) {
-    return item.submenu.some(subItem => location === subItem.href);
+    return item.submenu.some(subItem => isActive(location, subItem));
   }
   return false;
 }
 
 function MenuItem({ item, isSubmenu = false }: { item: MenuItem; isSubmenu?: boolean }) {
   const [location] = useLocation();
-  const [isOpen, setIsOpen] = useState(false);
-  const Icon = item.icon;
+  const [isOpen, setIsOpen] = useState(() => {
+    const stored = localStorage.getItem(`menu-${item.label}`);
+    return stored ? JSON.parse(stored) : isActive(location, item);
+  });
   const active = isActive(location, item);
+
+  useEffect(() => {
+    if (active && !isOpen) {
+      setIsOpen(true);
+    }
+    localStorage.setItem(`menu-${item.label}`, JSON.stringify(isOpen));
+  }, [active, isOpen, item.label]);
 
   if (item.submenu) {
     return (
@@ -91,7 +100,7 @@ function MenuItem({ item, isSubmenu = false }: { item: MenuItem; isSubmenu?: boo
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
             "flex w-full items-center justify-between px-6 py-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent/50",
-            (isOpen || active) && "bg-sidebar-accent text-sidebar-accent-foreground"
+            (isOpen || active) && "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
           )}
         >
           <div className="flex items-center gap-3">
@@ -105,7 +114,7 @@ function MenuItem({ item, isSubmenu = false }: { item: MenuItem; isSubmenu?: boo
             <ChevronDown className="h-4 w-4" />
           </motion.div>
         </button>
-        <AnimatePresence>
+        <AnimatePresence initial={false}>
           {isOpen && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
