@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, decimal, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, numeric, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -15,7 +15,7 @@ export const products = pgTable("products", {
   name: text("name").notNull(),
   sku: text("sku").notNull().unique(),
   description: text("description"),
-  price: text("price").notNull(),
+  price: numeric("price").notNull(),
   stockLevel: integer("stock_level").notNull().default(0),
   minStockLevel: integer("min_stock_level").default(0),
   unit: text("unit").default("db"),
@@ -39,7 +39,7 @@ export const orders = pgTable("orders", {
   contactId: integer("contact_id").notNull(),
   orderDate: timestamp("order_date").notNull().defaultNow(),
   status: text("status").notNull(), // pending, completed, cancelled
-  total: text("total").notNull(),
+  total: numeric("total").notNull(),
   items: jsonb("items").notNull(), // Array of {productId, quantity, price}
   invoiceNumber: text("invoice_number"),
   notes: text("notes"),
@@ -49,13 +49,13 @@ export const orders = pgTable("orders", {
 export const insertUserSchema = createInsertSchema(users);
 
 export const insertProductSchema = createInsertSchema(products, {
-  price: z.string().or(z.number()).transform(val => String(val)),
+  price: z.number().or(z.string()).transform(val => String(val)),
 });
 
 export const insertContactSchema = createInsertSchema(contacts);
 
 export const insertOrderSchema = createInsertSchema(orders, {
-  total: z.string().or(z.number()).transform(val => String(val)),
+  total: z.number().or(z.string()).transform(val => String(val)),
 });
 
 // Types

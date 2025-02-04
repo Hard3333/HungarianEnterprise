@@ -85,6 +85,7 @@ function MenuItem({ item, isSubmenu = false }: { item: MenuItem; isSubmenu?: boo
     return stored ? JSON.parse(stored) : isActive(location, item);
   });
   const active = isActive(location, item);
+  const IconComponent = item.icon;
 
   useEffect(() => {
     if (active && !isOpen) {
@@ -104,7 +105,7 @@ function MenuItem({ item, isSubmenu = false }: { item: MenuItem; isSubmenu?: boo
           )}
         >
           <div className="flex items-center gap-3">
-            <Icon className="h-5 w-5" />
+            <IconComponent className="h-5 w-5" />
             <span>{t(item.label)}</span>
           </div>
           <motion.div
@@ -142,7 +143,7 @@ function MenuItem({ item, isSubmenu = false }: { item: MenuItem; isSubmenu?: boo
           isSubmenu && "pl-8"
         )}
       >
-        <Icon className="h-5 w-5" />
+        <IconComponent className="h-5 w-5" />
         <span>{t(item.label)}</span>
       </a>
     </Link>

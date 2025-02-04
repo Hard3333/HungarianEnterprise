@@ -15,7 +15,6 @@ export const hu = {
   sales: "Értékesítés",
   finances: "Pénzügyek",
   company: "Vállalat",
-  stockLevels: "Készletszintek",
   incomingDeliveries: "Beérkező szállítmányok",
   invoices: "Számlák",
   customers: "Ügyfelek",
@@ -36,6 +35,7 @@ export const hu = {
   price: "Ár",
   stockLevel: "Készletszint",
   minStockLevel: "Minimum készletszint",
+  stockLevels: "Raktárkészlet",
   unit: "Egység",
 
   // Contacts
@@ -60,7 +60,7 @@ export const hu = {
 
   // Charts
   salesChart: "Értékesítési statisztika",
-  stockLevels: "Készletszintek",
+  inventoryChart: "Készletszint statisztika",
 
   // Validation messages
   required: "Kötelező mező",
