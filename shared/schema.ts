@@ -45,6 +45,23 @@ export const orders = pgTable("orders", {
   notes: text("notes"),
 });
 
+// Add new tables for deliveries
+export const deliveries = pgTable("deliveries", {
+  id: serial("id").primaryKey(),
+  supplierId: integer("supplier_id").notNull(),
+  expectedDate: timestamp("expected_date").notNull(),
+  status: text("status").notNull(), // pending, in_transit, received, cancelled
+  notes: text("notes"),
+});
+
+export const deliveryItems = pgTable("delivery_items", {
+  id: serial("id").primaryKey(),
+  deliveryId: integer("delivery_id").notNull(),
+  productId: integer("product_id").notNull(),
+  quantity: integer("quantity").notNull(),
+  price: numeric("price").notNull(),
+});
+
 // Schema validations with proper type transformations
 export const insertUserSchema = createInsertSchema(users);
 
@@ -56,6 +73,12 @@ export const insertContactSchema = createInsertSchema(contacts);
 
 export const insertOrderSchema = createInsertSchema(orders, {
   total: z.number().or(z.string()).transform(val => String(val)),
+});
+
+// Add new schemas
+export const insertDeliverySchema = createInsertSchema(deliveries);
+export const insertDeliveryItemSchema = createInsertSchema(deliveryItems, {
+  price: z.number().or(z.string()).transform(val => String(val)),
 });
 
 // Types
@@ -76,3 +99,10 @@ export type OrderItem = {
   quantity: number;
   price: string;
 };
+
+// Add new types
+export type Delivery = typeof deliveries.$inferSelect;
+export type InsertDelivery = z.infer<typeof insertDeliverySchema>;
+
+export type DeliveryItem = typeof deliveryItems.$inferSelect;
+export type InsertDeliveryItem = z.infer<typeof insertDeliveryItemSchema>;
