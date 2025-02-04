@@ -1,31 +1,35 @@
-import session from "express-session";
-import createMemoryStore from "memorystore";
 import { Contact, InsertContact, InsertOrder, InsertProduct, Order, Product, User, InsertUser } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
+import { users, products, contacts, orders } from "@shared/schema";
+import session from "express-session";
+import connectPg from "connect-pg-simple";
+import { pool } from "./db";
 
-const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
   sessionStore: session.Store;
-  
+
   // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  
+
   // Product operations
   getProducts(): Promise<Product[]>;
   getProduct(id: number): Promise<Product | undefined>;
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(id: number, product: Partial<Product>): Promise<Product>;
   deleteProduct(id: number): Promise<void>;
-  
+
   // Contact operations
   getContacts(): Promise<Contact[]>;
   getContact(id: number): Promise<Contact | undefined>;
   createContact(contact: InsertContact): Promise<Contact>;
   updateContact(id: number, contact: Partial<Contact>): Promise<Contact>;
   deleteContact(id: number): Promise<void>;
-  
+
   // Order operations
   getOrders(): Promise<Order[]>;
   getOrder(id: number): Promise<Order | undefined>;
@@ -34,126 +38,115 @@ export interface IStorage {
   deleteOrder(id: number): Promise<void>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private products: Map<number, Product>;
-  private contacts: Map<number, Contact>;
-  private orders: Map<number, Order>;
-  private currentId: number;
+export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
   constructor() {
-    this.users = new Map();
-    this.products = new Map();
-    this.contacts = new Map();
-    this.orders = new Map();
-    this.currentId = 1;
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000,
+    this.sessionStore = new PostgresSessionStore({
+      pool,
+      createTableIfMissing: true,
     });
   }
 
   // User operations
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentId++;
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async createUser(user: InsertUser): Promise<User> {
+    const [newUser] = await db.insert(users).values(user).returning();
+    return newUser;
   }
 
   // Product operations
   async getProducts(): Promise<Product[]> {
-    return Array.from(this.products.values());
+    return await db.select().from(products);
   }
 
   async getProduct(id: number): Promise<Product | undefined> {
-    return this.products.get(id);
+    const [product] = await db.select().from(products).where(eq(products.id, id));
+    return product;
   }
 
   async createProduct(product: InsertProduct): Promise<Product> {
-    const id = this.currentId++;
-    const newProduct = { ...product, id };
-    this.products.set(id, newProduct);
+    const [newProduct] = await db.insert(products).values(product).returning();
     return newProduct;
   }
 
   async updateProduct(id: number, product: Partial<Product>): Promise<Product> {
-    const existing = this.products.get(id);
-    if (!existing) throw new Error("Product not found");
-    const updated = { ...existing, ...product };
-    this.products.set(id, updated);
+    const [updated] = await db
+      .update(products)
+      .set(product)
+      .where(eq(products.id, id))
+      .returning();
     return updated;
   }
 
   async deleteProduct(id: number): Promise<void> {
-    this.products.delete(id);
+    await db.delete(products).where(eq(products.id, id));
   }
 
   // Contact operations
   async getContacts(): Promise<Contact[]> {
-    return Array.from(this.contacts.values());
+    return await db.select().from(contacts);
   }
 
   async getContact(id: number): Promise<Contact | undefined> {
-    return this.contacts.get(id);
+    const [contact] = await db.select().from(contacts).where(eq(contacts.id, id));
+    return contact;
   }
 
   async createContact(contact: InsertContact): Promise<Contact> {
-    const id = this.currentId++;
-    const newContact = { ...contact, id };
-    this.contacts.set(id, newContact);
+    const [newContact] = await db.insert(contacts).values(contact).returning();
     return newContact;
   }
 
   async updateContact(id: number, contact: Partial<Contact>): Promise<Contact> {
-    const existing = this.contacts.get(id);
-    if (!existing) throw new Error("Contact not found");
-    const updated = { ...existing, ...contact };
-    this.contacts.set(id, updated);
+    const [updated] = await db
+      .update(contacts)
+      .set(contact)
+      .where(eq(contacts.id, id))
+      .returning();
     return updated;
   }
 
   async deleteContact(id: number): Promise<void> {
-    this.contacts.delete(id);
+    await db.delete(contacts).where(eq(contacts.id, id));
   }
 
   // Order operations
   async getOrders(): Promise<Order[]> {
-    return Array.from(this.orders.values());
+    return await db.select().from(orders);
   }
 
   async getOrder(id: number): Promise<Order | undefined> {
-    return this.orders.get(id);
+    const [order] = await db.select().from(orders).where(eq(orders.id, id));
+    return order;
   }
 
   async createOrder(order: InsertOrder): Promise<Order> {
-    const id = this.currentId++;
-    const newOrder = { ...order, id };
-    this.orders.set(id, newOrder);
+    const [newOrder] = await db.insert(orders).values(order).returning();
     return newOrder;
   }
 
   async updateOrder(id: number, order: Partial<Order>): Promise<Order> {
-    const existing = this.orders.get(id);
-    if (!existing) throw new Error("Order not found");
-    const updated = { ...existing, ...order };
-    this.orders.set(id, updated);
+    const [updated] = await db
+      .update(orders)
+      .set(order)
+      .where(eq(orders.id, id))
+      .returning();
     return updated;
   }
 
   async deleteOrder(id: number): Promise<void> {
-    this.orders.delete(id);
+    await db.delete(orders).where(eq(orders.id, id));
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
