@@ -14,12 +14,14 @@ import {
   DollarSign,
   Boxes,
   ClipboardList,
-  Building2
+  Building2,
+  ChevronDown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 type MenuItem = {
   icon: any;
@@ -68,10 +70,19 @@ const navigation: MenuItem[] = [
   },
 ];
 
+function isActive(location: string, item: MenuItem): boolean {
+  if (item.href) return location === item.href;
+  if (item.submenu) {
+    return item.submenu.some(subItem => location === subItem.href);
+  }
+  return false;
+}
+
 function MenuItem({ item, isSubmenu = false }: { item: MenuItem; isSubmenu?: boolean }) {
   const [location] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const Icon = item.icon;
+  const active = isActive(location, item);
 
   if (item.submenu) {
     return (
@@ -79,20 +90,36 @@ function MenuItem({ item, isSubmenu = false }: { item: MenuItem; isSubmenu?: boo
         <button
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            "flex w-full items-center gap-3 px-6 py-3 text-sidebar-foreground hover:bg-sidebar-accent",
-            isOpen && "bg-sidebar-accent"
+            "flex w-full items-center justify-between px-6 py-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent/50",
+            (isOpen || active) && "bg-sidebar-accent text-sidebar-accent-foreground"
           )}
         >
-          <Icon className="h-5 w-5" />
-          <span>{t(item.label)}</span>
-        </button>
-        {isOpen && (
-          <div className="ml-4 border-l border-sidebar-border">
-            {item.submenu.map((subItem) => (
-              <MenuItem key={subItem.label} item={subItem} isSubmenu />
-            ))}
+          <div className="flex items-center gap-3">
+            <Icon className="h-5 w-5" />
+            <span>{t(item.label)}</span>
           </div>
-        )}
+          <motion.div
+            animate={{ rotate: isOpen ? 180 : 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <ChevronDown className="h-4 w-4" />
+          </motion.div>
+        </button>
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden border-l border-sidebar-border ml-4"
+            >
+              {item.submenu.map((subItem) => (
+                <MenuItem key={subItem.label} item={subItem} isSubmenu />
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }
@@ -101,8 +128,8 @@ function MenuItem({ item, isSubmenu = false }: { item: MenuItem; isSubmenu?: boo
     <Link href={item.href!}>
       <a
         className={cn(
-          "flex items-center gap-3 px-6 py-3 text-sidebar-foreground hover:bg-sidebar-accent",
-          location === item.href && "bg-sidebar-accent text-sidebar-accent-foreground",
+          "flex items-center gap-3 px-6 py-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent/50",
+          location === item.href && "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
           isSubmenu && "pl-8"
         )}
       >
