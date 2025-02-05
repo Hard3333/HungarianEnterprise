@@ -45,8 +45,6 @@ import {
   Calendar,
   Plus,
   Receipt,
-  ArrowDownIcon,
-  ArrowUpIcon,
   BanknoteIcon,
   Loader2
 } from "lucide-react";
@@ -60,11 +58,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Sidebar } from "@/components/layout/sidebar";
-import { Header } from "@/components/layout/header";
-import { AnimatedContent } from "@/components/layout/animated-content";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-
 
 // Form schemas
 const billSchema = z.object({
@@ -238,22 +231,20 @@ export default function Invoices() {
                   subtitle: "az elmúlt 30 napban"
                 }
               ].map((stat, index) => (
-                <AnimatedItem key={index}>
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">
-                        {stat.title}
-                      </CardTitle>
-                      <stat.icon className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{stat.value}</div>
-                      <p className="text-xs text-muted-foreground">
-                        {stat.subtitle}
-                      </p>
-                    </CardContent>
-                  </Card>
-                </AnimatedItem>
+                <Card key={index}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      {stat.title}
+                    </CardTitle>
+                    <stat.icon className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stat.value}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {stat.subtitle}
+                    </p>
+                  </CardContent>
+                </Card>
               ))}
             </div>
 
@@ -441,90 +432,82 @@ export default function Invoices() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-3 mb-6">
-              <AnimatedItem>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      Összes kifizetendő
-                    </CardTitle>
-                    <BanknoteIcon className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {totalBills.toLocaleString()} Ft
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {pendingBillsCount} db számla
-                    </p>
-                  </CardContent>
-                </Card>
-              </AnimatedItem>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Összes kifizetendő
+                  </CardTitle>
+                  <BanknoteIcon className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {totalBills.toLocaleString()} Ft
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {pendingBillsCount} db számla
+                  </p>
+                </CardContent>
+              </Card>
 
-              <AnimatedItem>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      Következő fizetés
-                    </CardTitle>
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      2024.02.20
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      5 nap múlva esedékes
-                    </p>
-                  </CardContent>
-                </Card>
-              </AnimatedItem>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Következő fizetés
+                  </CardTitle>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    2024.02.20
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    5 nap múlva esedékes
+                  </p>
+                </CardContent>
+              </Card>
 
-              <AnimatedItem>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      Átlagos számlaérték
-                    </CardTitle>
-                    <Receipt className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {avgBillAmount.toLocaleString()} Ft
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      az elmúlt 30 napban
-                    </p>
-                  </CardContent>
-                </Card>
-              </AnimatedItem>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Átlagos számlaérték
+                  </CardTitle>
+                  <Receipt className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {avgBillAmount.toLocaleString()} Ft
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    az elmúlt 30 napban
+                  </p>
+                </CardContent>
+              </Card>
             </div>
 
-            <AnimatedItem>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Beszállító</TableHead>
-                    <TableHead>Számlaszám</TableHead>
-                    <TableHead>Összeg</TableHead>
-                    <TableHead>Fizetési határidő</TableHead>
-                    <TableHead>Kategória</TableHead>
-                    <TableHead>Megjegyzések</TableHead>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Beszállító</TableHead>
+                  <TableHead>Számlaszám</TableHead>
+                  <TableHead>Összeg</TableHead>
+                  <TableHead>Fizetési határidő</TableHead>
+                  <TableHead>Kategória</TableHead>
+                  <TableHead>Megjegyzések</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {bills.map((bill) => (
+                  <TableRow key={bill.id}>
+                    <TableCell className="font-medium">{bill.supplierName}</TableCell>
+                    <TableCell>{bill.invoiceNumber}</TableCell>
+                    <TableCell>{bill.amount.toLocaleString()} Ft</TableCell>
+                    <TableCell>{bill.dueDate}</TableCell>
+                    <TableCell>{bill.category}</TableCell>
+                    <TableCell>{bill.notes}</TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {bills.map((bill) => (
-                    <TableRow key={bill.id}>
-                      <TableCell className="font-medium">{bill.supplierName}</TableCell>
-                      <TableCell>{bill.invoiceNumber}</TableCell>
-                      <TableCell>{bill.amount.toLocaleString()} Ft</TableCell>
-                      <TableCell>{bill.dueDate}</TableCell>
-                      <TableCell>{bill.category}</TableCell>
-                      <TableCell>{bill.notes}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </AnimatedItem>
+                ))}
+              </TableBody>
+            </Table>
           </TabsContent>
         </Tabs>
       </AnimatedItem>
