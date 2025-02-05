@@ -17,27 +17,36 @@ const pool = new Pool({
         rejectUnauthorized: false
       } 
     : undefined,
-  // Lokális fejlesztéshez hasznos beállítások
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  // Pool beállítások a jobb teljesítményért és stabilitásért
+  max: 20, // maximum 20 kapcsolat
+  idleTimeoutMillis: 30000, // inactive connections are closed after 30 seconds
+  connectionTimeoutMillis: 2000, // connect timeout after 2 seconds
+  keepAlive: true, // keep connections alive
+  keepAliveInitialDelayMillis: 10000 // delay before first keepalive
+});
+
+// Error handling for the pool
+pool.on('error', (err, client) => {
+  console.error('Unexpected error on idle client', err);
 });
 
 // Kapcsolat tesztelése induláskor
-pool.connect((err, client, release) => {
-  if (err) {
+pool.connect()
+  .then(client => {
+    return client
+      .query('SELECT NOW()')
+      .then(result => {
+        client.release();
+        console.log('Database connected successfully');
+      })
+      .catch(err => {
+        client.release();
+        console.error('Error executing query', err.stack);
+      });
+  })
+  .catch(err => {
     console.error('Error acquiring client', err.stack);
-    return;
-  }
-  client.query('SELECT NOW()', (err, result) => {
-    release();
-    if (err) {
-      console.error('Error executing query', err.stack);
-      return;
-    }
-    console.log('Database connected successfully');
   });
-});
 
 export const db = drizzle(pool, { schema });
 export { pool };
