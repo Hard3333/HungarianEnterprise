@@ -7,76 +7,141 @@ import { insertProductSchema, insertContactSchema, insertOrderSchema, insertDeli
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
+  // Add a health check endpoint
+  app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok" });
+  });
+
   // Product routes
   app.get("/api/products", async (req, res) => {
-    const products = await storage.getProducts();
-    res.json(products);
+    try {
+      const products = await storage.getProducts();
+      res.json(products);
+    } catch (error) {
+      console.error('Error getting products:', error);
+      res.status(500).json({ message: 'Failed to get products' });
+    }
   });
 
   app.post("/api/products", async (req, res) => {
-    const product = insertProductSchema.parse(req.body);
-    const created = await storage.createProduct(product);
-    res.status(201).json(created);
+    try {
+      const product = insertProductSchema.parse(req.body);
+      const created = await storage.createProduct(product);
+      res.status(201).json(created);
+    } catch (error) {
+      console.error('Error creating product:', error);
+      res.status(500).json({ message: 'Failed to create product' });
+    }
   });
 
   app.patch("/api/products/:id", async (req, res) => {
-    const id = parseInt(req.params.id);
-    const updated = await storage.updateProduct(id, req.body);
-    res.json(updated);
+    try {
+      const id = parseInt(req.params.id);
+      const updated = await storage.updateProduct(id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error('Error updating product:', error);
+      res.status(500).json({ message: 'Failed to update product' });
+    }
   });
 
   app.delete("/api/products/:id", async (req, res) => {
-    const id = parseInt(req.params.id);
-    await storage.deleteProduct(id);
-    res.sendStatus(204);
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteProduct(id);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      res.status(500).json({ message: 'Failed to delete product' });
+    }
   });
 
   // Contact routes
   app.get("/api/contacts", async (req, res) => {
-    const contacts = await storage.getContacts();
-    res.json(contacts);
+    try {
+      const contacts = await storage.getContacts();
+      res.json(contacts);
+    } catch (error) {
+      console.error('Error getting contacts:', error);
+      res.status(500).json({ message: 'Failed to get contacts' });
+    }
   });
 
   app.post("/api/contacts", async (req, res) => {
-    const contact = insertContactSchema.parse(req.body);
-    const created = await storage.createContact(contact);
-    res.status(201).json(created);
+    try {
+      const contact = insertContactSchema.parse(req.body);
+      const created = await storage.createContact(contact);
+      res.status(201).json(created);
+    } catch (error) {
+      console.error('Error creating contact:', error);
+      res.status(500).json({ message: 'Failed to create contact' });
+    }
   });
 
   app.patch("/api/contacts/:id", async (req, res) => {
-    const id = parseInt(req.params.id);
-    const updated = await storage.updateContact(id, req.body);
-    res.json(updated);
+    try {
+      const id = parseInt(req.params.id);
+      const updated = await storage.updateContact(id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error('Error updating contact:', error);
+      res.status(500).json({ message: 'Failed to update contact' });
+    }
   });
 
   app.delete("/api/contacts/:id", async (req, res) => {
-    const id = parseInt(req.params.id);
-    await storage.deleteContact(id);
-    res.sendStatus(204);
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteContact(id);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error('Error deleting contact:', error);
+      res.status(500).json({ message: 'Failed to delete contact' });
+    }
   });
 
   // Order routes
   app.get("/api/orders", async (req, res) => {
-    const orders = await storage.getOrders();
-    res.json(orders);
+    try {
+      const orders = await storage.getOrders();
+      res.json(orders);
+    } catch (error) {
+      console.error('Error getting orders:', error);
+      res.status(500).json({ message: 'Failed to get orders' });
+    }
   });
 
   app.post("/api/orders", async (req, res) => {
-    const order = insertOrderSchema.parse(req.body);
-    const created = await storage.createOrder(order);
-    res.status(201).json(created);
+    try {
+      const order = insertOrderSchema.parse(req.body);
+      const created = await storage.createOrder(order);
+      res.status(201).json(created);
+    } catch (error) {
+      console.error('Error creating order:', error);
+      res.status(500).json({ message: 'Failed to create order' });
+    }
   });
 
   app.patch("/api/orders/:id", async (req, res) => {
-    const id = parseInt(req.params.id);
-    const updated = await storage.updateOrder(id, req.body);
-    res.json(updated);
+    try {
+      const id = parseInt(req.params.id);
+      const updated = await storage.updateOrder(id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error('Error updating order:', error);
+      res.status(500).json({ message: 'Failed to update order' });
+    }
   });
 
   app.delete("/api/orders/:id", async (req, res) => {
-    const id = parseInt(req.params.id);
-    await storage.deleteOrder(id);
-    res.sendStatus(204);
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteOrder(id);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      res.status(500).json({ message: 'Failed to delete order' });
+    }
   });
 
   // Delivery routes
