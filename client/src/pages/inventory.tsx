@@ -28,7 +28,7 @@ import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Plus, Edit2, Trash2, Filter, Save } from "lucide-react";
+import { Plus, Edit2, Trash2, Filter, Save, Download, Upload, MoreHorizontal } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { PageLayout } from "@/components/layout/page-layout";
 import { AnimatedItem } from "@/components/layout/animated-content";
@@ -94,6 +94,7 @@ export default function Inventory() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [filterState, setFilterState] = useState<FilterState>(defaultFilter);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<number[]>([]);
   const { toast } = useToast();
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
@@ -111,6 +112,69 @@ export default function Inventory() {
       unit: "db",
     },
   });
+
+  // Batch operations
+  const batchDeleteMutation = useMutation({
+    mutationFn: async (ids: number[]) => {
+      const res = await apiRequest("DELETE", "/api/products/batch", { ids });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      setSelectedItems([]);
+      toast({ title: t("success") });
+    },
+  });
+
+  const batchUpdateMutation = useMutation({
+    mutationFn: async (data: { ids: number[]; updates: Partial<Product> }) => {
+      const res = await apiRequest("PATCH", "/api/products/batch", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      setSelectedItems([]);
+      toast({ title: t("success") });
+    },
+  });
+
+  // File operations
+  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const products = JSON.parse(e.target?.result as string);
+        await apiRequest("POST", "/api/products/import", { products });
+        queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+        toast({ title: t("importSuccess") });
+      } catch (error) {
+        toast({ 
+          title: t("importError"),
+          variant: "destructive"
+        });
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleExport = () => {
+    const exportData = selectedItems.length > 0
+      ? products.filter(p => selectedItems.includes(p.id))
+      : products;
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "products.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   // Filter functions
   const matchesSearch = (product: Product) => {
@@ -467,66 +531,119 @@ export default function Inventory() {
           </Popover>
         </div>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => {
-              setSelectedProduct(null);
-              form.reset();
-            }}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t("addProduct")}
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {selectedProduct ? t("editProduct") : t("addProduct")}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={onSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">{t("productName")}</Label>
-                <Input {...form.register("name")} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="sku">{t("sku")}</Label>
-                <Input {...form.register("sku")} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="price">{t("price")}</Label>
-                  <Input
-                    type="text"
-                    {...form.register("price")}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="unit">{t("unit")}</Label>
-                  <Input {...form.register("unit")} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="stockLevel">{t("stockLevel")}</Label>
-                  <Input
-                    type="number"
-                    {...form.register("stockLevel", { valueAsNumber: true })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="minStockLevel">{t("minStockLevel")}</Label>
-                  <Input
-                    type="number"
-                    {...form.register("minStockLevel", { valueAsNumber: true })}
-                  />
-                </div>
-              </div>
-              <Button type="submit" className="w-full">
-                {selectedProduct ? t("editProduct") : t("addProduct")}
+        <div className="flex gap-2">
+          {selectedItems.length > 0 && (
+            <>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  if (confirm(t("confirmBatchDelete"))) {
+                    batchDeleteMutation.mutate(selectedItems);
+                  }
+                }}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                {t("deleteSelected")} ({selectedItems.length})
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleExport}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {t("exportSelected")}
+              </Button>
+            </>
+          )}
+
+          <label htmlFor="file-import">
+            <Button variant="outline" size="sm" asChild>
+              <div>
+                <Upload className="h-4 w-4 mr-2" />
+                {t("import")}
+              </div>
+            </Button>
+          </label>
+          <input
+            id="file-import"
+            type="file"
+            accept=".json"
+            className="hidden"
+            onChange={handleFileImport}
+          />
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            {t("exportAll")}
+          </Button>
+
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => {
+                setSelectedProduct(null);
+                form.reset();
+              }}>
+                <Plus className="h-4 w-4 mr-2" />
+                {t("addProduct")}
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {selectedProduct ? t("editProduct") : t("addProduct")}
+                </DialogTitle>
+              </DialogHeader>
+              <form onSubmit={onSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">{t("productName")}</Label>
+                  <Input {...form.register("name")} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sku">{t("sku")}</Label>
+                  <Input {...form.register("sku")} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="price">{t("price")}</Label>
+                    <Input
+                      type="text"
+                      {...form.register("price")}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="unit">{t("unit")}</Label>
+                    <Input {...form.register("unit")} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="stockLevel">{t("stockLevel")}</Label>
+                    <Input
+                      type="number"
+                      {...form.register("stockLevel", { valueAsNumber: true })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="minStockLevel">{t("minStockLevel")}</Label>
+                    <Input
+                      type="number"
+                      {...form.register("minStockLevel", { valueAsNumber: true })}
+                    />
+                  </div>
+                </div>
+                <Button type="submit" className="w-full">
+                  {selectedProduct ? t("editProduct") : t("addProduct")}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </AnimatedItem>
 
       <AnimatedItem>
@@ -540,6 +657,21 @@ export default function Inventory() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-12">
+                  <Checkbox
+                    checked={
+                      selectedItems.length > 0 &&
+                      selectedItems.length === filteredProducts.length
+                    }
+                    onCheckedChange={(checked) => {
+                      setSelectedItems(
+                        checked
+                          ? filteredProducts.map((p) => p.id)
+                          : []
+                      );
+                    }}
+                  />
+                </TableHead>
                 <TableHead>{t("productName")}</TableHead>
                 <TableHead>{t("sku")}</TableHead>
                 <TableHead>{t("price")}</TableHead>
@@ -550,7 +682,26 @@ export default function Inventory() {
             </TableHeader>
             <TableBody>
               {filteredProducts.map((product) => (
-                <TableRow key={product.id}>
+                <TableRow 
+                  key={product.id}
+                  className={
+                    selectedItems.includes(product.id)
+                      ? "bg-accent/50"
+                      : undefined
+                  }
+                >
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedItems.includes(product.id)}
+                      onCheckedChange={(checked) => {
+                        setSelectedItems(
+                          checked
+                            ? [...selectedItems, product.id]
+                            : selectedItems.filter((id) => id !== product.id)
+                        );
+                      }}
+                    />
+                  </TableCell>
                   <TableCell>{product.name}</TableCell>
                   <TableCell>{product.sku}</TableCell>
                   <TableCell>{product.price} Ft</TableCell>
