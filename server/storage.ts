@@ -54,9 +54,16 @@ export class DatabaseStorage implements IStorage {
   constructor() {
     this.sessionStore = new PostgresSessionStore({
       pool,
-      createTableIfMissing: true,
       tableName: 'session',
+      createTableIfMissing: true,
       schemaName: 'public',
+      // Add connection retry settings
+      retries: 5,
+      retryStrategy: function(times: number) {
+        const delay = Math.min(times * 1000, 5000);
+        console.log(`Retrying session store connection, attempt ${times}`);
+        return delay;
+      }
     });
   }
 
@@ -162,11 +169,12 @@ export class DatabaseStorage implements IStorage {
 
   async deleteProducts(ids: number[]): Promise<void> {
     try {
-      // Ensure ids is an array and convert it to a proper Postgres array format
+      // Ensure ids is an array
       const idsArray = Array.isArray(ids) ? ids : [ids];
+      // Use in operator instead of ANY for simpler syntax
       await db
         .delete(products)
-        .where(sql`${products.id} = ANY(ARRAY[${sql.join(idsArray, sql`, `)}])`);
+        .where(sql`${products.id} IN (${sql.join(idsArray)})`);
     } catch (error) {
       console.error('Error deleting products in batch:', error);
       throw error;
@@ -178,7 +186,7 @@ export class DatabaseStorage implements IStorage {
       const updatedProducts = await db
         .update(products)
         .set(updates)
-        .where(sql`${products.id} = ANY(${ids})`)
+        .where(sql`${products.id} IN (${sql.join(ids)})`)
         .returning();
       return updatedProducts;
     } catch (error) {

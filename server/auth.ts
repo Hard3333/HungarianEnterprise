@@ -44,7 +44,14 @@ export function setupAuth(app: Express) {
     store: new PostgresStore({
       pool,
       tableName: 'session',
-      createTableIfMissing: true
+      createTableIfMissing: true,
+      // Add connection retry settings
+      retries: 5,
+      retryStrategy: function(times: number) {
+        const delay = Math.min(times * 1000, 5000);
+        console.log(`Retrying session store connection, attempt ${times}`);
+        return delay;
+      }
     }),
     cookie: {
       secure: app.get("env") === "production",
