@@ -2,6 +2,17 @@ import express from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import cors from "cors";
+import dotenv from "dotenv";
+
+// Load environment variables from .env file in development
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config();
+}
+
+// Ensure required environment variables are set
+if (!process.env.SESSION_SECRET) {
+  throw new Error("SESSION_SECRET must be set in environment variables");
+}
 
 async function startServer() {
   try {
@@ -40,9 +51,11 @@ async function startServer() {
     }
 
     // Start listening
-    const port = 5000;
+    const port = process.env.PORT || 5000;
     server.listen(port, '0.0.0.0', () => {
       log(`Server running at http://0.0.0.0:${port}`);
+      log(`Environment: ${process.env.NODE_ENV}`);
+      log(`Database URL: ${process.env.DATABASE_URL?.replace(/:[^:@]{1,}@/, ':***@')}`);
     });
 
     return server;
