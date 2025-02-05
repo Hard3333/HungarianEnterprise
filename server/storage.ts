@@ -1,7 +1,7 @@
-import { Contact, InsertContact, InsertOrder, InsertProduct, Order, Product, User, InsertUser, Delivery, InsertDelivery } from "@shared/schema";
+import { Contact, InsertContact, InsertOrder, InsertProduct, Order, Product, User, InsertUser } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql } from "drizzle-orm";
-import { users, products, contacts, orders, deliveries } from "@shared/schema";
+import { users, products, contacts, orders } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -39,13 +39,6 @@ export interface IStorage {
   createOrder(order: InsertOrder): Promise<Order>;
   updateOrder(id: number, order: Partial<Order>): Promise<Order>;
   deleteOrder(id: number): Promise<void>;
-
-  // Delivery operations
-  getDeliveries(): Promise<Delivery[]>;
-  getDelivery(id: number): Promise<Delivery | undefined>;
-  createDelivery(delivery: InsertDelivery): Promise<Delivery>;
-  updateDelivery(id: number, delivery: Partial<Delivery>): Promise<Delivery>;
-  deleteDelivery(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -56,14 +49,6 @@ export class DatabaseStorage implements IStorage {
       pool,
       tableName: 'session',
       createTableIfMissing: true,
-      schemaName: 'public',
-      // Add connection retry settings
-      retries: 5,
-      retryStrategy: function(times: number) {
-        const delay = Math.min(times * 1000, 5000);
-        console.log(`Retrying session store connection, attempt ${times}`);
-        return delay;
-      }
     });
   }
 
@@ -138,55 +123,26 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async createProducts(productList: InsertProduct[]): Promise<Product[]> {
+  async createProducts(products: InsertProduct[]): Promise<Product[]> {
     try {
-      // Explicitly use the products table and properly format the values
-      const valuesToInsert = productList.map(product => ({
-        name: product.name,
-        sku: product.sku,
-        price: product.price,
-        stockLevel: product.stockLevel ?? 0,
-        minStockLevel: product.minStockLevel ?? null,
-        description: product.description ?? null,
-        unit: product.unit ?? null
-      }));
-
       const createdProducts = await db
         .insert(products)
-        .values(valuesToInsert)
-        .returning({
-          id: products.id,
-          name: products.name,
-          sku: products.sku,
-          price: products.price,
-          stockLevel: products.stockLevel,
-          minStockLevel: products.minStockLevel,
-          description: products.description,
-          unit: products.unit
-        });
-
+        .values(products)
+        .returning();
       return createdProducts;
     } catch (error) {
       console.error('Error creating products in batch:', error);
-      throw new Error(`Failed to create products: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
     }
   }
 
   async deleteProducts(ids: number[]): Promise<void> {
     try {
-      // Ensure ids is an array and not empty
       if (!Array.isArray(ids) || ids.length === 0) {
         throw new Error('Invalid input: expected non-empty array of IDs');
       }
 
-      // Create placeholders for the prepared statement
-      const placeholders = ids.map((_, i) => `$${i + 1}`).join(', ');
-
-      // Use raw query for bulk delete with prepared statement
-      await db.execute(
-        sql`DELETE FROM ${products} WHERE id IN (${sql.raw(placeholders)})`,
-        ids
-      );
+      await db.delete(products).where(sql`id = ANY(${ids})`);
     } catch (error) {
       console.error('Error deleting products in batch:', error);
       throw error;
@@ -198,7 +154,7 @@ export class DatabaseStorage implements IStorage {
       const updatedProducts = await db
         .update(products)
         .set(updates)
-        .where(sql`${products.id} IN (${ids.map(id => id.toString()).join(', ')})`)
+        .where(sql`${products.id} = ANY(${ids})`)
         .returning();
       return updatedProducts;
     } catch (error) {
@@ -261,67 +217,6 @@ export class DatabaseStorage implements IStorage {
 
   async deleteOrder(id: number): Promise<void> {
     await db.delete(orders).where(eq(orders.id, id));
-  }
-
-  // Delivery operations
-  async getDeliveries(): Promise<Delivery[]> {
-    try {
-      const result = await db.select().from(deliveries);
-      return result;
-    } catch (error) {
-      console.error('Error getting deliveries:', error);
-      throw error;
-    }
-  }
-
-  async getDelivery(id: number): Promise<Delivery | undefined> {
-    try {
-      const [delivery] = await db.select().from(deliveries).where(eq(deliveries.id, id));
-      if (!delivery) {
-        console.log(`No delivery found with id: ${id}`);
-      }
-      return delivery;
-    } catch (error) {
-      console.error('Error getting delivery:', error);
-      return undefined;
-    }
-  }
-
-  async createDelivery(delivery: InsertDelivery): Promise<Delivery> {
-    try {
-      const [newDelivery] = await db.insert(deliveries).values(delivery).returning();
-      console.log('Created new delivery:', newDelivery.id);
-      return newDelivery;
-    } catch (error) {
-      console.error('Error creating delivery:', error);
-      throw error;
-    }
-  }
-
-  async updateDelivery(id: number, delivery: Partial<Delivery>): Promise<Delivery> {
-    try {
-      const [updated] = await db
-        .update(deliveries)
-        .set(delivery)
-        .where(eq(deliveries.id, id))
-        .returning();
-      if (!updated) {
-        throw new Error(`No delivery found with id: ${id}`);
-      }
-      return updated;
-    } catch (error) {
-      console.error('Error updating delivery:', error);
-      throw error;
-    }
-  }
-
-  async deleteDelivery(id: number): Promise<void> {
-    try {
-      await db.delete(deliveries).where(eq(deliveries.id, id));
-    } catch (error) {
-      console.error('Error deleting delivery:', error);
-      throw error;
-    }
   }
 }
 

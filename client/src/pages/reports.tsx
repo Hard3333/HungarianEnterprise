@@ -1,6 +1,6 @@
 import { t } from "@/lib/i18n";
 import { useQuery } from "@tanstack/react-query";
-import { Order, Product } from "@shared/schema";
+import { Order, Product, VatRate, VatTransaction } from "@shared/schema";
 import {
   Card,
   CardContent,
@@ -31,10 +31,11 @@ import {
   Line,
   Legend
 } from "recharts";
-import { ArrowUpRight, ChevronUp, Warehouse, DollarSign, TrendingUp } from "lucide-react";
+import { ArrowUpRight, ChevronUp, Warehouse, DollarSign, TrendingUp, Receipt } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageLayout } from "@/components/layout/page-layout";
 import { AnimatedItem } from "@/components/layout/animated-content";
+import { Badge } from "@/components/ui/badge";
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "#2196F3", "#4CAF50", "#FF9800"];
 
@@ -49,47 +50,42 @@ export default function Reports() {
     queryKey: ["/api/products"],
   });
 
-  // Calculate monthly revenue
-  const monthlyData = Array.from({ length: 12 }, (_, i) => ({
-    month: monthNames[i],
-    revenue: Math.random() * 10000000 + 5000000,
-    expenses: Math.random() * 8000000 + 4000000
-  }));
+  const { data: vatRates = [], isLoading: isLoadingVatRates } = useQuery<VatRate[]>({
+    queryKey: ["/api/vat-rates"],
+  });
 
-  // Calculate product performance
-  const productPerformance = products
-    .map(product => ({
-      name: product.name.length > 20 ? product.name.substring(0, 20) + '...' : product.name,
-      revenue: orders.reduce((sum, order) => {
-        const orderItems = order.items as any[];
-        const item = orderItems.find(item => item.productId === product.id);
-        return sum + (item ? parseFloat(item.price) * item.quantity : 0);
-      }, 0),
-      units: orders.reduce((sum, order) => {
-        const orderItems = order.items as any[];
-        const item = orderItems.find(item => item.productId === product.id);
-        return sum + (item ? item.quantity : 0);
-      }, 0)
-    }))
-    .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 5);
+  const { data: vatTransactions = [], isLoading: isLoadingVatTransactions } = useQuery<VatTransaction[]>({
+    queryKey: ["/api/vat-transactions"],
+  });
 
-  // Calculate inventory metrics
-  const inventoryMetrics = products.reduce((acc, product) => ({
-    totalValue: acc.totalValue + parseFloat(product.price) * product.stockLevel,
-    totalItems: acc.totalItems + product.stockLevel,
-    lowStock: acc.lowStock + (product.stockLevel <= (product.minStockLevel || 0) ? 1 : 0)
-  }), { totalValue: 0, totalItems: 0, lowStock: 0 });
+  // Calculate monthly VAT data
+  const monthlyVatData = Array.from({ length: 12 }, (_, i) => {
+    const month = monthNames[i];
+    const monthTransactions = vatTransactions.filter(tx => {
+      const txDate = new Date(tx.transactionDate);
+      return txDate.getMonth() === i;
+    });
 
-  // Customer segments
-  const customerSegments = [
-    { name: "Nagyvállalat", value: 45 },
-    { name: "KKV", value: 30 },
-    { name: "Startup", value: 15 },
-    { name: "Egyéni", value: 10 }
-  ];
+    return {
+      month,
+      collectedVAT: monthTransactions.reduce((sum, tx) => sum + Number(tx.vatAmount), 0),
+      transactions: monthTransactions.length
+    };
+  });
 
-  const isLoading = isLoadingOrders || isLoadingProducts;
+  // Calculate VAT rate distribution
+  const vatDistribution = vatRates.map(rate => ({
+    name: rate.name,
+    value: vatTransactions
+      .filter(tx => tx.vatRateId === rate.id)
+      .reduce((sum, tx) => sum + Number(tx.vatAmount), 0)
+  })).sort((a, b) => b.value - a.value);
+
+  const totalVAT = vatTransactions.reduce((sum, tx) => sum + Number(tx.vatAmount), 0);
+  const totalTransactions = vatTransactions.length;
+  const averageVAT = totalTransactions > 0 ? totalVAT / totalTransactions : 0;
+
+  const isLoading = isLoadingOrders || isLoadingProducts || isLoadingVatRates || isLoadingVatTransactions;
 
   return (
     <PageLayout
@@ -116,17 +112,17 @@ export default function Reports() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
-                    Havi bevétel
+                    ÁFA összesen
                   </CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <Receipt className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {monthlyData[11].revenue.toLocaleString()} Ft
+                    {totalVAT.toLocaleString()} Ft
                   </div>
                   <div className="flex items-center text-sm text-green-500">
                     <ChevronUp className="h-4 w-4" />
-                    +12.5% az előző hónaphoz képest
+                    {((totalVAT / (totalVAT - monthlyVatData[11].collectedVAT) - 1) * 100).toFixed(1)}% az előző hónaphoz képest
                   </div>
                 </CardContent>
               </Card>
@@ -134,16 +130,16 @@ export default function Reports() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
-                    Készletérték
+                    Tranzakciók száma
                   </CardTitle>
                   <Warehouse className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {inventoryMetrics.totalValue.toLocaleString()} Ft
+                    {totalTransactions} db
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {inventoryMetrics.totalItems} termék raktáron
+                    {averageVAT.toLocaleString()} Ft átlagos ÁFA / tranzakció
                   </div>
                 </CardContent>
               </Card>
@@ -151,17 +147,17 @@ export default function Reports() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
-                    Profitráta
+                    Leggyakoribb ÁFA kulcs
                   </CardTitle>
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    23.5%
+                    {vatDistribution[0]?.name || "N/A"}
                   </div>
                   <div className="flex items-center text-sm text-green-500">
                     <ArrowUpRight className="h-4 w-4" />
-                    +2.1% az előző évhez képest
+                    {vatDistribution[0]?.value ? Math.round((vatDistribution[0].value / totalVAT) * 100) : 0}% részesedés
                   </div>
                 </CardContent>
               </Card>
@@ -174,7 +170,7 @@ export default function Reports() {
         <div className="grid gap-4 md:grid-cols-2 mb-6">
           <Card>
             <CardHeader>
-              <CardTitle>Bevétel vs. Kiadás</CardTitle>
+              <CardTitle>ÁFA trend</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -182,7 +178,7 @@ export default function Reports() {
               ) : (
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={monthlyData}>
+                    <LineChart data={monthlyVatData}>
                       <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                       <XAxis dataKey="month" />
                       <YAxis />
@@ -196,16 +192,9 @@ export default function Reports() {
                       <Legend />
                       <Line
                         type="monotone"
-                        dataKey="revenue"
-                        name="Bevétel"
+                        dataKey="collectedVAT"
+                        name="Beszedett ÁFA"
                         stroke="hsl(var(--primary))"
-                        strokeWidth={2}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="expenses"
-                        name="Kiadás"
-                        stroke="hsl(var(--destructive))"
                         strokeWidth={2}
                       />
                     </LineChart>
@@ -217,7 +206,7 @@ export default function Reports() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Ügyfélszegmensek</CardTitle>
+              <CardTitle>ÁFA megoszlás</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -227,15 +216,17 @@ export default function Reports() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={customerSegments}
+                        data={vatDistribution}
                         dataKey="value"
                         nameKey="name"
                         cx="50%"
                         cy="50%"
                         outerRadius={80}
-                        label={({ name, value }) => `${name} ${value}%`}
+                        label={({ name, value }) =>
+                          `${name} (${Math.round((value / totalVAT) * 100)}%)`
+                        }
                       >
-                        {customerSegments.map((_, index) => (
+                        {vatDistribution.map((_, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
@@ -244,7 +235,7 @@ export default function Reports() {
                           backgroundColor: "hsl(var(--background))",
                           border: "1px solid hsl(var(--border))"
                         }}
-                        formatter={(value: number) => `${value}%`}
+                        formatter={(value: number) => `${value.toLocaleString()} Ft`}
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -255,6 +246,64 @@ export default function Reports() {
         </div>
       </AnimatedItem>
 
+      <AnimatedItem>
+        <Card>
+          <CardHeader>
+            <CardTitle>Legutóbbi ÁFA tranzakciók</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Dátum</TableHead>
+                    <TableHead>Nettó összeg</TableHead>
+                    <TableHead>ÁFA kulcs</TableHead>
+                    <TableHead>ÁFA összeg</TableHead>
+                    <TableHead>Státusz</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {vatTransactions
+                    .sort((a, b) => new Date(b.transactionDate).getTime() - new Date(a.transactionDate).getTime())
+                    .slice(0, 5)
+                    .map((tx) => {
+                      const vatRate = vatRates.find(r => r.id === tx.vatRateId);
+
+                      return (
+                        <TableRow key={tx.id}>
+                          <TableCell>
+                            {new Date(tx.transactionDate).toLocaleDateString("hu")}
+                          </TableCell>
+                          <TableCell>
+                            {Number(tx.netAmount).toLocaleString()} Ft
+                          </TableCell>
+                          <TableCell>
+                            {vatRate?.name} ({vatRate?.rate}%)
+                          </TableCell>
+                          <TableCell>
+                            {Number(tx.vatAmount).toLocaleString()} Ft
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className={tx.reported ? "bg-green-500" : "bg-yellow-500"}>
+                              {tx.reported ? "Bejelentve" : "Függőben"}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </AnimatedItem>
       <AnimatedItem>
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
@@ -344,3 +393,43 @@ export default function Reports() {
     </PageLayout>
   );
 }
+
+// Calculate monthly revenue
+const monthlyData = Array.from({ length: 12 }, (_, i) => ({
+  month: monthNames[i],
+  revenue: Math.random() * 10000000 + 5000000,
+  expenses: Math.random() * 8000000 + 4000000
+}));
+
+// Calculate product performance
+const productPerformance = products
+  .map(product => ({
+    name: product.name.length > 20 ? product.name.substring(0, 20) + '...' : product.name,
+    revenue: orders.reduce((sum, order) => {
+      const orderItems = order.items as any[];
+      const item = orderItems.find(item => item.productId === product.id);
+      return sum + (item ? parseFloat(item.price) * item.quantity : 0);
+    }, 0),
+    units: orders.reduce((sum, order) => {
+      const orderItems = order.items as any[];
+      const item = orderItems.find(item => item.productId === product.id);
+      return sum + (item ? item.quantity : 0);
+    }, 0)
+  }))
+  .sort((a, b) => b.revenue - a.revenue)
+  .slice(0, 5);
+
+// Calculate inventory metrics
+const inventoryMetrics = products.reduce((acc, product) => ({
+  totalValue: acc.totalValue + parseFloat(product.price) * product.stockLevel,
+  totalItems: acc.totalItems + product.stockLevel,
+  lowStock: acc.lowStock + (product.stockLevel <= (product.minStockLevel || 0) ? 1 : 0)
+}), { totalValue: 0, totalItems: 0, lowStock: 0 });
+
+// Customer segments
+const customerSegments = [
+  { name: "Nagyvállalat", value: 45 },
+  { name: "KKV", value: 30 },
+  { name: "Startup", value: 15 },
+  { name: "Egyéni", value: 10 }
+];

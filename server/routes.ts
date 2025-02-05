@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
-import { insertProductSchema, insertContactSchema, insertOrderSchema, insertDeliverySchema } from "@shared/schema";
+import { insertProductSchema, insertContactSchema, insertOrderSchema } from "@shared/schema";
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -34,7 +34,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // New batch operations for products
   app.post("/api/products/import", async (req, res) => {
     try {
       const products = req.body.products;
@@ -42,18 +41,9 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ message: 'Products must be an array' });
       }
 
-      // Validate each product using the schema
       const parsedProducts = products.map((product, index) => {
         try {
-          return insertProductSchema.parse({
-            name: product.name,
-            sku: product.sku,
-            price: product.price,
-            stockLevel: product.stockLevel ?? 0,
-            minStockLevel: product.minStockLevel ?? null,
-            description: product.description ?? null,
-            unit: product.unit ?? null
-          });
+          return insertProductSchema.parse(product);
         } catch (error) {
           throw new Error(`Invalid product at index ${index}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
@@ -118,7 +108,6 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ message: 'Failed to update product' });
     }
   });
-
 
   // Contact routes
   app.get("/api/contacts", async (req, res) => {
@@ -205,64 +194,6 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error('Error deleting order:', error);
       res.status(500).json({ message: 'Failed to delete order' });
-    }
-  });
-
-  // Delivery routes
-  app.get("/api/deliveries", async (req, res) => {
-    try {
-      const deliveries = await storage.getDeliveries();
-      res.json(deliveries);
-    } catch (error) {
-      console.error('Error getting deliveries:', error);
-      res.status(500).json({ message: 'Failed to get deliveries' });
-    }
-  });
-
-  app.get("/api/deliveries/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const delivery = await storage.getDelivery(id);
-      if (!delivery) {
-        return res.status(404).json({ message: 'Delivery not found' });
-      }
-      res.json(delivery);
-    } catch (error) {
-      console.error('Error getting delivery:', error);
-      res.status(500).json({ message: 'Failed to get delivery' });
-    }
-  });
-
-  app.post("/api/deliveries", async (req, res) => {
-    try {
-      const delivery = insertDeliverySchema.parse(req.body);
-      const created = await storage.createDelivery(delivery);
-      res.status(201).json(created);
-    } catch (error) {
-      console.error('Error creating delivery:', error);
-      res.status(500).json({ message: 'Failed to create delivery' });
-    }
-  });
-
-  app.patch("/api/deliveries/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const updated = await storage.updateDelivery(id, req.body);
-      res.json(updated);
-    } catch (error) {
-      console.error('Error updating delivery:', error);
-      res.status(500).json({ message: 'Failed to update delivery' });
-    }
-  });
-
-  app.delete("/api/deliveries/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      await storage.deleteDelivery(id);
-      res.sendStatus(204);
-    } catch (error) {
-      console.error('Error deleting delivery:', error);
-      res.status(500).json({ message: 'Failed to delete delivery' });
     }
   });
 

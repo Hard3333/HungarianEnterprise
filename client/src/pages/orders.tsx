@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Order, Contact, Product, insertOrderSchema } from "@shared/schema";
+import { Order, Contact, Product, VatRate, insertOrderSchema, TranslationKey, translationKeys } from "@shared/schema";
 import { t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +19,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -27,14 +26,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Plus, Edit2, Trash2 } from "lucide-react";
+import { Plus, Edit2, Trash2, Receipt } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { PageLayout } from "@/components/layout/page-layout";
 import { AnimatedItem } from "@/components/layout/animated-content";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 
 export default function Orders() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -53,14 +61,20 @@ export default function Orders() {
     queryKey: ["/api/products"],
   });
 
-  const isLoading = isLoadingOrders || isLoadingContacts || isLoadingProducts;
+  const { data: vatRates = [], isLoading: isLoadingVatRates } = useQuery<VatRate[]>({
+    queryKey: ["/api/vat-rates"],
+  });
+
+  const isLoading = isLoadingOrders || isLoadingContacts || isLoadingProducts || isLoadingVatRates;
 
   const form = useForm({
     resolver: zodResolver(insertOrderSchema),
     defaultValues: selectedOrder || {
       contactId: 0,
       status: "pending",
-      total: "",
+      netTotal: "0",
+      vatTotal: "0",
+      grossTotal: "0",
       items: [],
     },
   });
@@ -74,7 +88,7 @@ export default function Orders() {
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       setDialogOpen(false);
       form.reset();
-      toast({ title: t("success") });
+      toast({ title: t(translationKeys.create as TranslationKey) });
     },
   });
 
@@ -92,7 +106,7 @@ export default function Orders() {
       setDialogOpen(false);
       setSelectedOrder(null);
       form.reset();
-      toast({ title: t("success") });
+      toast({ title: t(translationKeys.save as TranslationKey) });
     },
   });
 
@@ -102,7 +116,7 @@ export default function Orders() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
-      toast({ title: t("success") });
+      toast({ title: t(translationKeys.save as TranslationKey) });
     },
   });
 
@@ -116,7 +130,7 @@ export default function Orders() {
 
   return (
     <PageLayout
-      title={t("orders")}
+      title={t("orders" as TranslationKey)}
       description="Rendelések kezelése"
     >
       <AnimatedItem className="flex justify-between items-center mb-6">
@@ -129,71 +143,129 @@ export default function Orders() {
               }}
             >
               <Plus className="h-4 w-4 mr-2" />
-              {t("addOrder")}
+              {t("addOrder" as TranslationKey)}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {selectedOrder ? t("editOrder") : t("addOrder")}
+                {selectedOrder ? t("editOrder" as TranslationKey) : t("addOrder" as TranslationKey)}
               </DialogTitle>
             </DialogHeader>
-            <form onSubmit={onSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label>{t("contacts")}</Label>
-                <Select
-                  defaultValue={String(form.getValues("contactId"))}
-                  onValueChange={(value) =>
-                    form.setValue("contactId", Number(value))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {contacts.map((contact) => (
-                      <SelectItem key={contact.id} value={String(contact.id)}>
-                        {contact.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>{t("status")}</Label>
-                <Select
-                  defaultValue={form.getValues("status")}
-                  onValueChange={(value) => form.setValue("status", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">{t("pending")}</SelectItem>
-                    <SelectItem value="completed">{t("completed")}</SelectItem>
-                    <SelectItem value="cancelled">{t("cancelled")}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>{t("total")}</Label>
-                <Input
-                  type="text"
-                  {...form.register("total")}
+            <Form {...form}>
+              <form onSubmit={onSubmit} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="contactId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t(translationKeys.contact)}</FormLabel>
+                      <Select
+                        value={String(field.value)}
+                        onValueChange={(value) => field.onChange(Number(value))}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={t(translationKeys.selectContact)} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {contacts.map((contact) => (
+                            <SelectItem key={contact.id} value={String(contact.id)}>
+                              {contact.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div className="space-y-2">
-                <Label>{t("invoiceNumber")}</Label>
-                <Input {...form.register("invoiceNumber")} />
-              </div>
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t(translationKeys.status)}</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={t(translationKeys.selectStatus)} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="pending">{t(translationKeys.pending)}</SelectItem>
+                          <SelectItem value="completed">{t(translationKeys.completed)}</SelectItem>
+                          <SelectItem value="cancelled">{t(translationKeys.cancelled)}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <Button type="submit" className="w-full">
-                {selectedOrder ? t("editOrder") : t("addOrder")}
-              </Button>
-            </form>
+                <FormField
+                  control={form.control}
+                  name="netTotal"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t(translationKeys.netTotal)}</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="number" step="0.01" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="vatTotal"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t(translationKeys.vatTotal)}</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="number" step="0.01" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="grossTotal"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t(translationKeys.grossTotal)}</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="number" step="0.01" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="invoiceNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t(translationKeys.invoiceNumber)}</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <Button type="submit" className="w-full">
+                  {selectedOrder ? t(translationKeys.save) : t(translationKeys.create)}
+                </Button>
+              </form>
+            </Form>
           </DialogContent>
         </Dialog>
       </AnimatedItem>
@@ -209,11 +281,13 @@ export default function Orders() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("invoiceNumber")}</TableHead>
-                <TableHead>{t("contactName")}</TableHead>
-                <TableHead>{t("orderDate")}</TableHead>
-                <TableHead>{t("status")}</TableHead>
-                <TableHead>{t("total")}</TableHead>
+                <TableHead>{t(translationKeys.invoiceNumber)}</TableHead>
+                <TableHead>{t("contactName" as TranslationKey)}</TableHead>
+                <TableHead>{t("orderDate" as TranslationKey)}</TableHead>
+                <TableHead>{t(translationKeys.status)}</TableHead>
+                <TableHead>{t(translationKeys.netTotal)}</TableHead>
+                <TableHead>{t(translationKeys.vatTotal)}</TableHead>
+                <TableHead>{t(translationKeys.grossTotal)}</TableHead>
                 <TableHead className="w-24"></TableHead>
               </TableRow>
             </TableHeader>
@@ -227,8 +301,18 @@ export default function Orders() {
                   <TableCell>
                     {new Date(order.orderDate).toLocaleDateString("hu")}
                   </TableCell>
-                  <TableCell>{t(order.status as any)}</TableCell>
-                  <TableCell>{order.total} Ft</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className={
+                      order.status === "completed" ? "bg-green-500" :
+                      order.status === "cancelled" ? "bg-red-500" :
+                      "bg-yellow-500"
+                    }>
+                      {t(order.status as TranslationKey)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{Number(order.netTotal).toLocaleString()} Ft</TableCell>
+                  <TableCell>{Number(order.vatTotal).toLocaleString()} Ft</TableCell>
+                  <TableCell>{Number(order.grossTotal).toLocaleString()} Ft</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
                       <Button
