@@ -1,3 +1,4 @@
+<replit_final_file>
 import { t } from "@/lib/i18n";
 import { useQuery } from "@tanstack/react-query";
 import { Order, Product, VatRate, VatTransaction } from "@shared/schema";
@@ -31,7 +32,7 @@ import {
   Line,
   Legend
 } from "recharts";
-import { ArrowUpRight, ChevronUp, Warehouse, DollarSign, TrendingUp, Receipt } from "lucide-react";
+import { ArrowUpRight, ChevronUp, Warehouse, Receipt, TrendingUp } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageLayout } from "@/components/layout/page-layout";
 import { AnimatedItem } from "@/components/layout/animated-content";
@@ -42,6 +43,7 @@ const COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "#2196F3", "#4
 const monthNames = ["Jan", "Feb", "Mar", "Apr", "Máj", "Jún", "Júl", "Aug", "Szep", "Okt", "Nov", "Dec"];
 
 export default function Reports() {
+  // Queries
   const { data: orders = [], isLoading: isLoadingOrders } = useQuery<Order[]>({
     queryKey: ["/api/orders"],
   });
@@ -85,6 +87,24 @@ export default function Reports() {
   const totalTransactions = vatTransactions.length;
   const averageVAT = totalTransactions > 0 ? totalVAT / totalTransactions : 0;
 
+  // Calculate product performance
+  const productPerformance = products
+    .map(product => ({
+      name: product.name.length > 20 ? product.name.substring(0, 20) + '...' : product.name,
+      revenue: orders.reduce((sum, order) => {
+        const orderItems = order.items as Array<{ productId: number; quantity: number; price: string }>;
+        const item = orderItems.find(item => item.productId === product.id);
+        return sum + (item ? Number(item.price) * item.quantity : 0);
+      }, 0),
+      units: orders.reduce((sum, order) => {
+        const orderItems = order.items as Array<{ productId: number; quantity: number }>;
+        const item = orderItems.find(item => item.productId === product.id);
+        return sum + (item ? item.quantity : 0);
+      }, 0)
+    }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 5);
+
   const isLoading = isLoadingOrders || isLoadingProducts || isLoadingVatRates || isLoadingVatTransactions;
 
   return (
@@ -92,6 +112,7 @@ export default function Reports() {
       title={t("reports")}
       description="Pénzügyi jelentések és kimutatások"
     >
+      {/* Summary Cards */}
       <AnimatedItem>
         <div className="grid gap-4 md:grid-cols-3 mb-6">
           {isLoading ? (
@@ -166,6 +187,7 @@ export default function Reports() {
         </div>
       </AnimatedItem>
 
+      {/* Charts */}
       <AnimatedItem>
         <div className="grid gap-4 md:grid-cols-2 mb-6">
           <Card>
@@ -246,6 +268,7 @@ export default function Reports() {
         </div>
       </AnimatedItem>
 
+      {/* Recent Transactions Table */}
       <AnimatedItem>
         <Card>
           <CardHeader>
@@ -304,6 +327,8 @@ export default function Reports() {
           </CardContent>
         </Card>
       </AnimatedItem>
+
+      {/* Product Performance and Stock Levels */}
       <AnimatedItem>
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
@@ -393,43 +418,3 @@ export default function Reports() {
     </PageLayout>
   );
 }
-
-// Calculate monthly revenue
-const monthlyData = Array.from({ length: 12 }, (_, i) => ({
-  month: monthNames[i],
-  revenue: Math.random() * 10000000 + 5000000,
-  expenses: Math.random() * 8000000 + 4000000
-}));
-
-// Calculate product performance
-const productPerformance = products
-  .map(product => ({
-    name: product.name.length > 20 ? product.name.substring(0, 20) + '...' : product.name,
-    revenue: orders.reduce((sum, order) => {
-      const orderItems = order.items as any[];
-      const item = orderItems.find(item => item.productId === product.id);
-      return sum + (item ? parseFloat(item.price) * item.quantity : 0);
-    }, 0),
-    units: orders.reduce((sum, order) => {
-      const orderItems = order.items as any[];
-      const item = orderItems.find(item => item.productId === product.id);
-      return sum + (item ? item.quantity : 0);
-    }, 0)
-  }))
-  .sort((a, b) => b.revenue - a.revenue)
-  .slice(0, 5);
-
-// Calculate inventory metrics
-const inventoryMetrics = products.reduce((acc, product) => ({
-  totalValue: acc.totalValue + parseFloat(product.price) * product.stockLevel,
-  totalItems: acc.totalItems + product.stockLevel,
-  lowStock: acc.lowStock + (product.stockLevel <= (product.minStockLevel || 0) ? 1 : 0)
-}), { totalValue: 0, totalItems: 0, lowStock: 0 });
-
-// Customer segments
-const customerSegments = [
-  { name: "Nagyvállalat", value: 45 },
-  { name: "KKV", value: 30 },
-  { name: "Startup", value: 15 },
-  { name: "Egyéni", value: 10 }
-];
