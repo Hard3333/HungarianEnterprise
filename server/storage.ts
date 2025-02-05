@@ -171,10 +171,10 @@ export class DatabaseStorage implements IStorage {
     try {
       // Ensure ids is an array
       const idsArray = Array.isArray(ids) ? ids : [ids];
-      // Use in operator instead of ANY for simpler syntax
+      // Convert numbers to strings for SQL IN clause
       await db
         .delete(products)
-        .where(sql`${products.id} IN (${sql.join(idsArray)})`);
+        .where(sql`${products.id} IN (${idsArray.map(id => id.toString()).join(', ')})`);
     } catch (error) {
       console.error('Error deleting products in batch:', error);
       throw error;
@@ -186,7 +186,7 @@ export class DatabaseStorage implements IStorage {
       const updatedProducts = await db
         .update(products)
         .set(updates)
-        .where(sql`${products.id} IN (${sql.join(ids)})`)
+        .where(sql`${products.id} IN (${ids.map(id => id.toString()).join(', ')})`)
         .returning();
       return updatedProducts;
     } catch (error) {
