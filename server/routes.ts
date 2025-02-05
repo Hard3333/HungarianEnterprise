@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { insertProductSchema, insertContactSchema, insertOrderSchema } from "@shared/schema";
+import { insertVatTransactionSchema } from "@shared/schema";
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -168,6 +169,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const order = insertOrderSchema.parse(req.body);
       const created = await storage.createOrder(order);
+      await createVatTransactionForOrder(created);
       res.status(201).json(created);
     } catch (error) {
       console.error('Error creating order:', error);
@@ -179,6 +181,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const id = parseInt(req.params.id);
       const updated = await storage.updateOrder(id, req.body);
+      await createVatTransactionForOrder(updated);
       res.json(updated);
     } catch (error) {
       console.error('Error updating order:', error);
@@ -196,6 +199,65 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ message: 'Failed to delete order' });
     }
   });
+
+  // VAT Transaction routes
+  app.get("/api/vat-transactions", async (req, res) => {
+    try {
+      const transactions = await storage.getVatTransactions();
+      res.json(transactions);
+    } catch (error) {
+      console.error('Error getting VAT transactions:', error);
+      res.status(500).json({ message: 'Failed to get VAT transactions' });
+    }
+  });
+
+  app.post("/api/vat-transactions", async (req, res) => {
+    try {
+      const transaction = insertVatTransactionSchema.parse(req.body);
+      const created = await storage.createVatTransaction(transaction);
+      res.status(201).json(created);
+    } catch (error) {
+      console.error('Error creating VAT transaction:', error);
+      res.status(500).json({ message: 'Failed to create VAT transaction' });
+    }
+  });
+
+  app.patch("/api/vat-transactions/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updated = await storage.updateVatTransaction(id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error('Error updating VAT transaction:', error);
+      res.status(500).json({ message: 'Failed to update VAT transaction' });
+    }
+  });
+
+  // Add VAT transaction creation on order creation/update
+  const createVatTransactionForOrder = async (order: any) => {
+    try {
+      const reportingPeriod = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+
+      // Create VAT transaction for each item in the order
+      const vatTransactionsPromises = order.items.map(async (item: any) => {
+        return storage.createVatTransaction({
+          orderId: order.id,
+          transactionDate: new Date(),
+          vatRateId: item.vatRateId,
+          netAmount: String(Number(item.price) * item.quantity),
+          vatAmount: String(Number(item.vatAmount) * item.quantity),
+          reportingPeriod,
+          reported: false,
+        });
+      });
+
+      await Promise.all(vatTransactionsPromises);
+    } catch (error) {
+      console.error('Error creating VAT transactions for order:', error);
+      throw error;
+    }
+  };
+
 
   const httpServer = createServer(app);
   return httpServer;

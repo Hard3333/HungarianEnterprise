@@ -1,10 +1,12 @@
 import { Contact, InsertContact, InsertOrder, InsertProduct, Order, Product, User, InsertUser } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql } from "drizzle-orm";
-import { users, products, contacts, orders } from "@shared/schema";
+import { users, products, contacts, orders, vatTransactions } from "@shared/schema"; // Added import for vatTransactions
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
+import { VatTransaction, InsertVatTransaction } from "@shared/schema"; // Added import for VatTransaction and InsertVatTransaction
+
 
 const PostgresSessionStore = connectPg(session);
 
@@ -39,6 +41,13 @@ export interface IStorage {
   createOrder(order: InsertOrder): Promise<Order>;
   updateOrder(id: number, order: Partial<Order>): Promise<Order>;
   deleteOrder(id: number): Promise<void>;
+
+  // VAT Transaction operations
+  getVatTransactions(): Promise<VatTransaction[]>;
+  getVatTransaction(id: number): Promise<VatTransaction | undefined>;
+  createVatTransaction(transaction: InsertVatTransaction): Promise<VatTransaction>;
+  updateVatTransaction(id: number, transaction: Partial<VatTransaction>): Promise<VatTransaction>;
+  deleteVatTransaction(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -217,6 +226,65 @@ export class DatabaseStorage implements IStorage {
 
   async deleteOrder(id: number): Promise<void> {
     await db.delete(orders).where(eq(orders.id, id));
+  }
+
+  // VAT Transaction operations
+  async getVatTransactions(): Promise<VatTransaction[]> {
+    try {
+      return await db.select().from(vatTransactions);
+    } catch (error) {
+      console.error('Error getting VAT transactions:', error);
+      return [];
+    }
+  }
+
+  async getVatTransaction(id: number): Promise<VatTransaction | undefined> {
+    try {
+      const [transaction] = await db
+        .select()
+        .from(vatTransactions)
+        .where(eq(vatTransactions.id, id));
+      return transaction;
+    } catch (error) {
+      console.error('Error getting VAT transaction:', error);
+      return undefined;
+    }
+  }
+
+  async createVatTransaction(transaction: InsertVatTransaction): Promise<VatTransaction> {
+    try {
+      const [newTransaction] = await db
+        .insert(vatTransactions)
+        .values(transaction)
+        .returning();
+      return newTransaction;
+    } catch (error) {
+      console.error('Error creating VAT transaction:', error);
+      throw error;
+    }
+  }
+
+  async updateVatTransaction(id: number, transaction: Partial<VatTransaction>): Promise<VatTransaction> {
+    try {
+      const [updated] = await db
+        .update(vatTransactions)
+        .set(transaction)
+        .where(eq(vatTransactions.id, id))
+        .returning();
+      return updated;
+    } catch (error) {
+      console.error('Error updating VAT transaction:', error);
+      throw error;
+    }
+  }
+
+  async deleteVatTransaction(id: number): Promise<void> {
+    try {
+      await db.delete(vatTransactions).where(eq(vatTransactions.id, id));
+    } catch (error) {
+      console.error('Error deleting VAT transaction:', error);
+      throw error;
+    }
   }
 }
 
