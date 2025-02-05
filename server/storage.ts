@@ -1,7 +1,7 @@
-import { Contact, InsertContact, InsertOrder, InsertProduct, Order, Product, User, InsertUser } from "@shared/schema";
+import { Contact, InsertContact, InsertOrder, InsertProduct, Order, Product, User, InsertUser, Delivery, InsertDelivery } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
-import { users, products, contacts, orders } from "@shared/schema";
+import { users, products, contacts, orders, deliveries } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
