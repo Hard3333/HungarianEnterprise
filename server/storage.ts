@@ -128,15 +128,18 @@ export class DatabaseStorage implements IStorage {
 
   async createProducts(products: InsertProduct[]): Promise<Product[]> {
     try {
-      const createdProducts = await db.insert(products).values(products.map(product => ({
-        name: product.name,
-        sku: product.sku,
-        price: product.price,
-        stockLevel: product.stockLevel ?? 0,
-        minStockLevel: product.minStockLevel ?? null,
-        description: product.description ?? null,
-        unit: product.unit ?? null
-      }))).returning();
+      const createdProducts = await db
+        .insert(products)
+        .values(products.map(product => ({
+          name: product.name,
+          sku: product.sku,
+          price: product.price,
+          stockLevel: product.stockLevel ?? 0,
+          minStockLevel: product.minStockLevel ?? null,
+          description: product.description ?? null,
+          unit: product.unit ?? null
+        })))
+        .returning();
       return createdProducts;
     } catch (error) {
       console.error('Error creating products in batch:', error);
