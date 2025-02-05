@@ -79,6 +79,64 @@ export function registerRoutes(app: Express): Server {
     res.sendStatus(204);
   });
 
+  // Delivery routes
+  app.get("/api/deliveries", async (req, res) => {
+    try {
+      const deliveries = await storage.getDeliveries();
+      res.json(deliveries);
+    } catch (error) {
+      console.error('Error getting deliveries:', error);
+      res.status(500).json({ message: 'Failed to get deliveries' });
+    }
+  });
+
+  app.get("/api/deliveries/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const delivery = await storage.getDelivery(id);
+      if (!delivery) {
+        return res.status(404).json({ message: 'Delivery not found' });
+      }
+      res.json(delivery);
+    } catch (error) {
+      console.error('Error getting delivery:', error);
+      res.status(500).json({ message: 'Failed to get delivery' });
+    }
+  });
+
+  app.post("/api/deliveries", async (req, res) => {
+    try {
+      const delivery = insertDeliverySchema.parse(req.body);
+      const created = await storage.createDelivery(delivery);
+      res.status(201).json(created);
+    } catch (error) {
+      console.error('Error creating delivery:', error);
+      res.status(500).json({ message: 'Failed to create delivery' });
+    }
+  });
+
+  app.patch("/api/deliveries/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updated = await storage.updateDelivery(id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error('Error updating delivery:', error);
+      res.status(500).json({ message: 'Failed to update delivery' });
+    }
+  });
+
+  app.delete("/api/deliveries/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteDelivery(id);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error('Error deleting delivery:', error);
+      res.status(500).json({ message: 'Failed to delete delivery' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

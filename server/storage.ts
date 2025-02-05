@@ -36,6 +36,13 @@ export interface IStorage {
   createOrder(order: InsertOrder): Promise<Order>;
   updateOrder(id: number, order: Partial<Order>): Promise<Order>;
   deleteOrder(id: number): Promise<void>;
+
+  // Delivery operations
+  getDeliveries(): Promise<Delivery[]>;
+  getDelivery(id: number): Promise<Delivery | undefined>;
+  createDelivery(delivery: InsertDelivery): Promise<Delivery>;
+  updateDelivery(id: number, delivery: Partial<Delivery>): Promise<Delivery>;
+  deleteDelivery(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -171,6 +178,67 @@ export class DatabaseStorage implements IStorage {
 
   async deleteOrder(id: number): Promise<void> {
     await db.delete(orders).where(eq(orders.id, id));
+  }
+
+  // Delivery operations
+  async getDeliveries(): Promise<Delivery[]> {
+    try {
+      const deliveries = await db.select().from(deliveries);
+      return deliveries;
+    } catch (error) {
+      console.error('Error getting deliveries:', error);
+      throw error;
+    }
+  }
+
+  async getDelivery(id: number): Promise<Delivery | undefined> {
+    try {
+      const [delivery] = await db.select().from(deliveries).where(eq(deliveries.id, id));
+      if (!delivery) {
+        console.log(`No delivery found with id: ${id}`);
+      }
+      return delivery;
+    } catch (error) {
+      console.error('Error getting delivery:', error);
+      return undefined;
+    }
+  }
+
+  async createDelivery(delivery: InsertDelivery): Promise<Delivery> {
+    try {
+      const [newDelivery] = await db.insert(deliveries).values(delivery).returning();
+      console.log('Created new delivery:', newDelivery.id);
+      return newDelivery;
+    } catch (error) {
+      console.error('Error creating delivery:', error);
+      throw error;
+    }
+  }
+
+  async updateDelivery(id: number, delivery: Partial<Delivery>): Promise<Delivery> {
+    try {
+      const [updated] = await db
+        .update(deliveries)
+        .set(delivery)
+        .where(eq(deliveries.id, id))
+        .returning();
+      if (!updated) {
+        throw new Error(`No delivery found with id: ${id}`);
+      }
+      return updated;
+    } catch (error) {
+      console.error('Error updating delivery:', error);
+      throw error;
+    }
+  }
+
+  async deleteDelivery(id: number): Promise<void> {
+    try {
+      await db.delete(deliveries).where(eq(deliveries.id, id));
+    } catch (error) {
+      console.error('Error deleting delivery:', error);
+      throw error;
+    }
   }
 }
 
