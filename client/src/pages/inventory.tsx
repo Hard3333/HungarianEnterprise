@@ -36,6 +36,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
+import { Progress } from "@/components/ui/progress";
+import cn from 'classnames';
 
 // Filter types
 type StockRange = "all" | "low" | "optimal" | "high" | "custom";
@@ -741,15 +743,33 @@ export default function Inventory() {
                   <TableCell>{product.sku}</TableCell>
                   <TableCell>{product.price} Ft</TableCell>
                   <TableCell>
-                    <span
-                      className={
-                        product.stockLevel <= (product.minStockLevel || 0)
-                          ? "text-destructive"
-                          : ""
-                      }
-                    >
-                      {product.stockLevel} {product.unit}
-                    </span>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span
+                          className={
+                            product.stockLevel <= (product.minStockLevel || 0)
+                              ? "text-destructive"
+                              : ""
+                          }
+                        >
+                          {product.stockLevel} {product.unit}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          Min: {product.minStockLevel || 0} {product.unit}
+                        </span>
+                      </div>
+                      {product.minStockLevel && (
+                        <Progress 
+                          value={(product.stockLevel / product.minStockLevel) * 100} 
+                          className={cn(
+                            "h-2",
+                            product.stockLevel < product.minStockLevel && "bg-destructive",
+                            product.stockLevel >= product.minStockLevel * 1.5 && "bg-green-500",
+                            product.stockLevel >= product.minStockLevel && product.stockLevel < product.minStockLevel * 1.5 && "bg-yellow-500"
+                          )}
+                        />
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>{product.unit}</TableCell>
                   <TableCell>
