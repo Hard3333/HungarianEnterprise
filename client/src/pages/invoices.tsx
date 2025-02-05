@@ -37,7 +37,7 @@ import { z } from "zod";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { format, isWithinInterval, parseISO, subDays } from "date-fns";
+import { format, isWithinInterval, parseISO, subDays, subMonths, subYears, subQuarters } from "date-fns";
 import {
   FileText,
   TrendingUp,
@@ -81,10 +81,12 @@ const billSchema = z.object({
 
 type BillFormData = z.infer<typeof billSchema>;
 
-// Filter types
-type DateRange = "all" | "today" | "week" | "month" | "custom";
+// Enhanced filter types
+type DateRange = "all" | "today" | "week" | "month" | "quarter" | "year" | "custom";
 type AmountFilter = { min: number; max: number };
 type StatusFilter = ("completed" | "pending" | "overdue")[];
+type SortDirection = "asc" | "desc";
+type SortField = "date" | "amount" | "dueDate" | "status" | "customer";
 
 interface FilterState {
   search: string;
@@ -94,6 +96,9 @@ interface FilterState {
   amount: AmountFilter;
   statuses: StatusFilter;
   categories: string[];
+  sortBy: SortField;
+  sortDirection: SortDirection;
+  saveFilter?: string;
 }
 
 const defaultFilter: FilterState = {
@@ -102,6 +107,8 @@ const defaultFilter: FilterState = {
   amount: { min: 0, max: 10000000 },
   statuses: ["completed", "pending", "overdue"],
   categories: [],
+  sortBy: "date",
+  sortDirection: "desc",
 };
 
 export default function Invoices() {
@@ -157,7 +164,17 @@ export default function Invoices() {
         });
       case "month":
         return isWithinInterval(date, {
-          start: subDays(new Date(), 30),
+          start: subMonths(new Date(), 1),
+          end: new Date(),
+        });
+      case "quarter":
+        return isWithinInterval(date, {
+          start: subQuarters(new Date(), 1),
+          end: new Date(),
+        });
+      case "year":
+        return isWithinInterval(date, {
+          start: subYears(new Date(), 1),
           end: new Date(),
         });
       case "custom":
@@ -174,15 +191,22 @@ export default function Invoices() {
   };
 
   const matchesSearch = (invoice: any, contacts: Contact[]) => {
-    const searchLower = filterState.search.toLowerCase();
+    if (!filterState.search) return true;
+    const searchTerms = filterState.search.toLowerCase().split(" ");
     const customer = contacts.find(c => c.id === invoice.contactId);
 
-    return (
-      invoice.invoiceNumber?.toLowerCase().includes(searchLower) ||
-      customer?.name.toLowerCase().includes(searchLower) ||
-      customer?.email?.toLowerCase().includes(searchLower) ||
-      customer?.phone?.toLowerCase().includes(searchLower)
-    );
+    return searchTerms.every(term => {
+      const searchString = [
+        invoice.invoiceNumber,
+        customer?.name,
+        customer?.email,
+        customer?.phone,
+        invoice.status,
+        invoice.total,
+      ].join(" ").toLowerCase();
+
+      return searchString.includes(term);
+    });
   };
 
   const matchesAmount = (amount: number) => {
@@ -193,7 +217,7 @@ export default function Invoices() {
   const invoices = orders.filter(order => order.invoiceNumber);
   const filteredInvoices = invoices.filter(invoice => {
     if (!matchesSearch(invoice, contacts)) return false;
-    if (!isWithinDateRange(new Date(invoice.orderDate))) return false; //Corrected line
+    if (!isWithinDateRange(new Date(invoice.orderDate))) return false;
     if (!matchesAmount(parseFloat(invoice.total))) return false;
 
     const dueDate = new Date(invoice.orderDate);
@@ -263,6 +287,14 @@ export default function Invoices() {
       total: dayInvoices.reduce((sum, invoice) => sum + parseFloat(invoice.total), 0),
     };
   }).reverse();
+
+  // Update the savedFilters array type definition
+  const savedFilters: { id: string; name: string; filter: FilterState }[] = [
+    { id: "recent", name: "Recent Invoices", filter: { ...defaultFilter, dateRange: "week" } },
+    { id: "overdue", name: "Overdue Only", filter: { ...defaultFilter, statuses: ["overdue"] } },
+    { id: "high-value", name: "High Value", filter: { ...defaultFilter, amount: { min: 1000000, max: 10000000 } } },
+  ];
+
 
   return (
     <PageLayout
@@ -337,8 +369,32 @@ export default function Invoices() {
                     Szűrők
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-80">
+                <PopoverContent className="w-96">
                   <div className="space-y-4">
+                    <div>
+                      <h4 className="font-medium mb-2">Mentett szűrők</h4>
+                      <Select
+                        value={filterState.saveFilter}
+                        onValueChange={(value) => {
+                          const saved = savedFilters.find(f => f.id === value);
+                          if (saved) {
+                            setFilterState(saved.filter);
+                          }
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Válassz mentett szűrőt" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {savedFilters.map(filter => (
+                            <SelectItem key={filter.id} value={filter.id}>
+                              {filter.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
                     <div className="space-y-2">
                       <h4 className="font-medium">Időszak</h4>
                       <Select
@@ -353,30 +409,72 @@ export default function Invoices() {
                           <SelectItem value="today">Mai</SelectItem>
                           <SelectItem value="week">Elmúlt 7 nap</SelectItem>
                           <SelectItem value="month">Elmúlt 30 nap</SelectItem>
+                          <SelectItem value="quarter">Elmúlt 3 hónap</SelectItem>
+                          <SelectItem value="year">Elmúlt 1 év</SelectItem>
                           <SelectItem value="custom">Egyéni időszak</SelectItem>
                         </SelectContent>
                       </Select>
 
                       {filterState.dateRange === "custom" && (
-                        <div className="grid grid-cols-2 gap-2">
-                          <Input
-                            type="date"
-                            value={filterState.customDateStart}
-                            onChange={(e) => setFilterState(prev => ({
-                              ...prev,
-                              customDateStart: e.target.value
-                            }))}
-                          />
-                          <Input
-                            type="date"
-                            value={filterState.customDateEnd}
-                            onChange={(e) => setFilterState(prev => ({
-                              ...prev,
-                              customDateEnd: e.target.value
-                            }))}
-                          />
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          <div>
+                            <label className="text-sm text-muted-foreground">Kezdő dátum</label>
+                            <Input
+                              type="date"
+                              value={filterState.customDateStart}
+                              onChange={(e) => setFilterState(prev => ({
+                                ...prev,
+                                customDateStart: e.target.value
+                              }))}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm text-muted-foreground">Záró dátum</label>
+                            <Input
+                              type="date"
+                              value={filterState.customDateEnd}
+                              onChange={(e) => setFilterState(prev => ({
+                                ...prev,
+                                customDateEnd: e.target.value
+                              }))}
+                            />
+                          </div>
                         </div>
                       )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="font-medium">Rendezés</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Select
+                          value={filterState.sortBy}
+                          onValueChange={(value) => setFilterState(prev => ({ ...prev, sortBy: value as SortField }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Rendezés alapja" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="date">Dátum</SelectItem>
+                            <SelectItem value="amount">Összeg</SelectItem>
+                            <SelectItem value="dueDate">Fizetési határidő</SelectItem>
+                            <SelectItem value="status">Státusz</SelectItem>
+                            <SelectItem value="customer">Ügyfél</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        <Select
+                          value={filterState.sortDirection}
+                          onValueChange={(value) => setFilterState(prev => ({ ...prev, sortDirection: value as SortDirection }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Irány" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="asc">Növekvő</SelectItem>
+                            <SelectItem value="desc">Csökkenő</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
 
                     <div className="space-y-2">
