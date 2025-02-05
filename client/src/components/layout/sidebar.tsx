@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 type MenuItem = {
   icon: any;
@@ -46,7 +46,6 @@ const navigation: MenuItem[] = [
     label: "sales",
     submenu: [
       { icon: ShoppingCart, label: "orders", href: "/orders" },
-      { icon: FileText, label: "invoices", href: "/invoices" },
       { icon: Users, label: "customers", href: "/customers" },
     ]
   },
@@ -54,6 +53,7 @@ const navigation: MenuItem[] = [
     icon: DollarSign,
     label: "finances",
     submenu: [
+      { icon: FileText, label: "invoices", href: "/invoices" },
       { icon: FileText, label: "bills", href: "/bills" },
       { icon: PieChart, label: "reports", href: "/reports" },
       { icon: ClipboardList, label: "accounting", href: "/accounting" },

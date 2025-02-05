@@ -18,13 +18,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   PieChart,
   Pie,
@@ -34,17 +34,18 @@ import {
   Legend
 } from "recharts";
 import { ArrowUpRight, ChevronUp, Warehouse, DollarSign, TrendingUp } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "#2196F3", "#4CAF50", "#FF9800"];
 
 const monthNames = ["Jan", "Feb", "Mar", "Apr", "Máj", "Jún", "Júl", "Aug", "Szep", "Okt", "Nov", "Dec"];
 
 export default function Reports() {
-  const { data: orders = [] } = useQuery<Order[]>({
+  const { data: orders = [], isLoading: isLoadingOrders } = useQuery<Order[]>({
     queryKey: ["/api/orders"],
   });
 
-  const { data: products = [] } = useQuery<Product[]>({
+  const { data: products = [], isLoading: isLoadingProducts } = useQuery<Product[]>({
     queryKey: ["/api/products"],
   });
 
@@ -88,6 +89,8 @@ export default function Reports() {
     { name: "Egyéni", value: 10 }
   ];
 
+  const isLoading = isLoadingOrders || isLoadingProducts;
+
   return (
     <div className="flex min-h-screen">
       <Sidebar />
@@ -102,207 +105,250 @@ export default function Reports() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-3 mb-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Havi bevétel
-                </CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {monthlyData[11].revenue.toLocaleString()} Ft
-                </div>
-                <div className="flex items-center text-sm text-green-500">
-                  <ChevronUp className="h-4 w-4" />
-                  +12.5% az előző hónaphoz képest
-                </div>
-              </CardContent>
-            </Card>
+            {isLoading ? (
+              Array(3).fill(0).map((_, i) => (
+                <Card key={i}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <Skeleton className="h-4 w-[100px]" />
+                    <Skeleton className="h-4 w-4" />
+                  </CardHeader>
+                  <CardContent>
+                    <Skeleton className="h-8 w-[150px]" />
+                    <Skeleton className="h-4 w-[100px] mt-1" />
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Havi bevétel
+                    </CardTitle>
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {monthlyData[11].revenue.toLocaleString()} Ft
+                    </div>
+                    <div className="flex items-center text-sm text-green-500">
+                      <ChevronUp className="h-4 w-4" />
+                      +12.5% az előző hónaphoz képest
+                    </div>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Készletérték
-                </CardTitle>
-                <Warehouse className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {inventoryMetrics.totalValue.toLocaleString()} Ft
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {inventoryMetrics.totalItems} termék raktáron
-                </div>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Készletérték
+                    </CardTitle>
+                    <Warehouse className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {inventoryMetrics.totalValue.toLocaleString()} Ft
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {inventoryMetrics.totalItems} termék raktáron
+                    </div>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Profitráta
-                </CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  23.5%
-                </div>
-                <div className="flex items-center text-sm text-green-500">
-                  <ArrowUpRight className="h-4 w-4" />
-                  +2.1% az előző évhez képest
-                </div>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Profitráta
+                    </CardTitle>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      23.5%
+                    </div>
+                    <div className="flex items-center text-sm text-green-500">
+                      <ArrowUpRight className="h-4 w-4" />
+                      +2.1% az előző évhez képest
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 mb-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Bevétel vs. Kiadás</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={monthlyData}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--background))",
-                          border: "1px solid hsl(var(--border))"
-                        }}
-                        formatter={(value: number) => `${value.toLocaleString()} Ft`}
-                      />
-                      <Legend />
-                      <Line
-                        type="monotone"
-                        dataKey="revenue"
-                        name="Bevétel"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth={2}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="expenses"
-                        name="Kiadás"
-                        stroke="hsl(var(--destructive))"
-                        strokeWidth={2}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+          {isLoading ? (
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-[200px]" />
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px] flex items-center justify-center">
+                    <Skeleton className="h-full w-full" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-[200px]" />
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px] flex items-center justify-center">
+                    <Skeleton className="h-full w-full" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <>
+              <div className="grid gap-4 md:grid-cols-2 mb-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Bevétel vs. Kiadás</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={monthlyData}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                          <XAxis dataKey="month" />
+                          <YAxis />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: "hsl(var(--background))",
+                              border: "1px solid hsl(var(--border))"
+                            }}
+                            formatter={(value: number) => `${value.toLocaleString()} Ft`}
+                          />
+                          <Legend />
+                          <Line
+                            type="monotone"
+                            dataKey="revenue"
+                            name="Bevétel"
+                            stroke="hsl(var(--primary))"
+                            strokeWidth={2}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="expenses"
+                            name="Kiadás"
+                            stroke="hsl(var(--destructive))"
+                            strokeWidth={2}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Ügyfélszegmensek</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={customerSegments}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        label={({ name, value }) => `${name} ${value}%`}
-                      >
-                        {customerSegments.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--background))",
-                          border: "1px solid hsl(var(--border))"
-                        }}
-                        formatter={(value: number) => `${value}%`}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Ügyfélszegmensek</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={customerSegments}
+                            dataKey="value"
+                            nameKey="name"
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={80}
+                            label={({ name, value }) => `${name} ${value}%`}
+                          >
+                            {customerSegments.map((_, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: "hsl(var(--background))",
+                              border: "1px solid hsl(var(--border))"
+                            }}
+                            formatter={(value: number) => `${value}%`}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Top termékek</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={productPerformance} layout="vertical">
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                          <XAxis type="number" />
+                          <YAxis type="category" dataKey="name" width={150} />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: "hsl(var(--background))",
+                              border: "1px solid hsl(var(--border))"
+                            }}
+                            formatter={(value: number) => `${value.toLocaleString()} Ft`}
+                          />
+                          <Bar dataKey="revenue" fill="hsl(var(--primary))" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Top termékek</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={productPerformance} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                      <XAxis type="number" />
-                      <YAxis type="category" dataKey="name" width={150} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--background))",
-                          border: "1px solid hsl(var(--border))"
-                        }}
-                        formatter={(value: number) => `${value.toLocaleString()} Ft`}
-                      />
-                      <Bar dataKey="revenue" fill="hsl(var(--primary))" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Készletszint állapot</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Termék</TableHead>
-                      <TableHead>Készlet</TableHead>
-                      <TableHead>Státusz</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {products.slice(0, 5).map((product) => {
-                      const stockRatio = product.minStockLevel
-                        ? (product.stockLevel / product.minStockLevel) * 100
-                        : 100;
-
-                      return (
-                        <TableRow key={product.id}>
-                          <TableCell className="font-medium">
-                            {product.name.length > 30
-                              ? product.name.substring(0, 30) + '...'
-                              : product.name}
-                          </TableCell>
-                          <TableCell>{product.stockLevel} {product.unit}</TableCell>
-                          <TableCell className="w-[200px]">
-                            <div className="flex items-center gap-2">
-                              <Progress
-                                value={stockRatio}
-                                className={stockRatio < 100 ? "text-destructive" : ""}
-                              />
-                              <span className="text-sm text-muted-foreground w-12">
-                                {Math.round(stockRatio)}%
-                              </span>
-                            </div>
-                          </TableCell>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Készletszint állapot</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Termék</TableHead>
+                          <TableHead>Készlet</TableHead>
+                          <TableHead>Státusz</TableHead>
                         </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </div>
+                      </TableHeader>
+                      <TableBody>
+                        {products.slice(0, 5).map((product) => {
+                          const stockRatio = product.minStockLevel
+                            ? (product.stockLevel / product.minStockLevel) * 100
+                            : 100;
+
+                          return (
+                            <TableRow key={product.id}>
+                              <TableCell className="font-medium">
+                                {product.name.length > 30
+                                  ? product.name.substring(0, 30) + '...'
+                                  : product.name}
+                              </TableCell>
+                              <TableCell>{product.stockLevel} {product.unit}</TableCell>
+                              <TableCell className="w-[200px]">
+                                <div className="flex items-center gap-2">
+                                  <Progress
+                                    value={stockRatio}
+                                    className={stockRatio < 100 ? "text-destructive" : ""}
+                                  />
+                                  <span className="text-sm text-muted-foreground w-12">
+                                    {Math.round(stockRatio)}%
+                                  </span>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
         </main>
       </div>
     </div>
