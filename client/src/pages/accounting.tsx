@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@/lib/i18n";
-import { Sidebar } from "@/components/layout/sidebar";
-import { Header } from "@/components/layout/header";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +37,9 @@ import {
 } from "@/components/ui/select";
 import { format } from "date-fns";
 import { Plus, CreditCard, TrendingUp, PiggyBank, CircleDollarSign } from "lucide-react";
+import { PageLayout } from "@/components/layout/page-layout";
+import { AnimatedItem } from "@/components/layout/animated-content";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const transactionSchema = z.object({
   type: z.enum(["income", "expense"]),
@@ -118,220 +119,191 @@ export default function Accounting() {
   const profitMargin = (balance / totalIncome) * 100;
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <div className="flex-1">
-        <Header />
-        <main className="p-6">
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">{t("accounting")}</h1>
-              <p className="text-muted-foreground">
-                Könyvelési műveletek és áttekintés
-              </p>
-            </div>
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Új tranzakció
+    <PageLayout
+      title={t("accounting")}
+      description="Könyvelési műveletek és áttekintés"
+    >
+      <AnimatedItem className="flex justify-between items-center mb-8">
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Új tranzakció
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Új tranzakció rögzítése</DialogTitle>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Típus</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Válassz típust" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="income">Bevétel</SelectItem>
+                          <SelectItem value="expense">Kiadás</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Kategória</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="amount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Összeg (Ft)</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="number" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Dátum</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="date" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Leírás</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" className="w-full">
+                  Mentés
                 </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Új tranzakció rögzítése</DialogTitle>
-                </DialogHeader>
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="type"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Típus</FormLabel>
-                          <Select 
-                            onValueChange={field.onChange} 
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Válassz típust" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="income">Bevétel</SelectItem>
-                              <SelectItem value="expense">Kiadás</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="category"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Kategória</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="amount"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Összeg (Ft)</FormLabel>
-                          <FormControl>
-                            <Input {...field} type="number" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="date"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Dátum</FormLabel>
-                          <FormControl>
-                            <Input {...field} type="date" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="description"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Leírás</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Button type="submit" className="w-full">
-                      Mentés
-                    </Button>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
-          </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+      </AnimatedItem>
 
-          <div className="grid gap-4 md:grid-cols-4 mb-6">
-            <Card>
+      <AnimatedItem>
+        <div className="grid gap-4 md:grid-cols-4 mb-6">
+          {[
+            {
+              title: "Összes bevétel",
+              icon: TrendingUp,
+              value: `${totalIncome.toLocaleString()} Ft`,
+              description: "az elmúlt 30 napban"
+            },
+            {
+              title: "Összes kiadás",
+              icon: CreditCard,
+              value: `${totalExpense.toLocaleString()} Ft`,
+              description: "az elmúlt 30 napban"
+            },
+            {
+              title: "Egyenleg",
+              icon: PiggyBank,
+              value: `${balance.toLocaleString()} Ft`,
+              description: "aktuális egyenleg"
+            },
+            {
+              title: "Profit ráta",
+              icon: CircleDollarSign,
+              value: `${profitMargin.toFixed(1)}%`,
+              description: "bevétel arányos nyereség"
+            }
+          ].map((stat, index) => (
+            <Card key={index}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Összes bevétel
+                  {stat.title}
                 </CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <stat.icon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {totalIncome.toLocaleString()} Ft
+                  {stat.value}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  az elmúlt 30 napban
+                  {stat.description}
                 </p>
               </CardContent>
             </Card>
+          ))}
+        </div>
+      </AnimatedItem>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Összes kiadás
-                </CardTitle>
-                <CreditCard className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {totalExpense.toLocaleString()} Ft
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  az elmúlt 30 napban
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Egyenleg
-                </CardTitle>
-                <PiggyBank className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {balance.toLocaleString()} Ft
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  aktuális egyenleg
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Profit ráta
-                </CardTitle>
-                <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {profitMargin.toFixed(1)}%
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  bevétel arányos nyereség
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Dátum</TableHead>
-                <TableHead>Típus</TableHead>
-                <TableHead>Kategória</TableHead>
-                <TableHead>Leírás</TableHead>
-                <TableHead className="text-right">Összeg</TableHead>
+      <AnimatedItem>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Dátum</TableHead>
+              <TableHead>Típus</TableHead>
+              <TableHead>Kategória</TableHead>
+              <TableHead>Leírás</TableHead>
+              <TableHead className="text-right">Összeg</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {transactions.map((transaction) => (
+              <TableRow key={transaction.id}>
+                <TableCell>{transaction.date}</TableCell>
+                <TableCell>
+                  <span className={
+                    transaction.type === "income" 
+                      ? "text-green-500" 
+                      : "text-red-500"
+                  }>
+                    {transaction.type === "income" ? "Bevétel" : "Kiadás"}
+                  </span>
+                </TableCell>
+                <TableCell>{transaction.category}</TableCell>
+                <TableCell>{transaction.description}</TableCell>
+                <TableCell className="text-right">
+                  {transaction.amount.toLocaleString()} Ft
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {transactions.map((transaction) => (
-                <TableRow key={transaction.id}>
-                  <TableCell>{transaction.date}</TableCell>
-                  <TableCell>
-                    <span className={
-                      transaction.type === "income" 
-                        ? "text-green-500" 
-                        : "text-red-500"
-                    }>
-                      {transaction.type === "income" ? "Bevétel" : "Kiadás"}
-                    </span>
-                  </TableCell>
-                  <TableCell>{transaction.category}</TableCell>
-                  <TableCell>{transaction.description}</TableCell>
-                  <TableCell className="text-right">
-                    {transaction.amount.toLocaleString()} Ft
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </main>
-      </div>
-    </div>
+            ))}
+          </TableBody>
+        </Table>
+      </AnimatedItem>
+    </PageLayout>
   );
 }

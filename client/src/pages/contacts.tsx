@@ -2,8 +2,6 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Contact, insertContactSchema } from "@shared/schema";
 import { t } from "@/lib/i18n";
-import { Sidebar } from "@/components/layout/sidebar";
-import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -28,13 +26,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Plus, Edit2, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { PageLayout } from "@/components/layout/page-layout";
+import { AnimatedItem } from "@/components/layout/animated-content";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Contacts() {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  const { data: contacts = [] } = useQuery<Contact[]>({
+  const { data: contacts = [], isLoading } = useQuery<Contact[]>({
     queryKey: ["/api/contacts"],
   });
 
@@ -101,64 +102,70 @@ export default function Contacts() {
   });
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <div className="flex-1">
-        <Header />
-        <main className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold tracking-tight">{t("contacts")}</h1>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  onClick={() => {
-                    setSelectedContact(null);
-                    form.reset();
-                  }}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t("addContact")}
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>
-                    {selectedContact ? t("editContact") : t("addContact")}
-                  </DialogTitle>
-                </DialogHeader>
-                <form onSubmit={onSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">{t("contactName")}</Label>
-                    <Input {...form.register("name")} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">{t("email")}</Label>
-                    <Input {...form.register("email")} type="email" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">{t("phone")}</Label>
-                    <Input {...form.register("phone")} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="address">{t("address")}</Label>
-                    <Input {...form.register("address")} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="taxNumber">{t("taxNumber")}</Label>
-                    <Input {...form.register("taxNumber")} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="notes">{t("notes")}</Label>
-                    <Textarea {...form.register("notes")} />
-                  </div>
-                  <Button type="submit" className="w-full">
-                    {selectedContact ? t("editContact") : t("addContact")}
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
+    <PageLayout
+      title={t("contacts")}
+      description="Kapcsolatok kezelése"
+    >
+      <AnimatedItem className="flex justify-between items-center mb-6">
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button
+              onClick={() => {
+                setSelectedContact(null);
+                form.reset();
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              {t("addContact")}
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {selectedContact ? t("editContact") : t("addContact")}
+              </DialogTitle>
+            </DialogHeader>
+            <form onSubmit={onSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">{t("contactName")}</Label>
+                <Input {...form.register("name")} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">{t("email")}</Label>
+                <Input {...form.register("email")} type="email" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">{t("phone")}</Label>
+                <Input {...form.register("phone")} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="address">{t("address")}</Label>
+                <Input {...form.register("address")} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="taxNumber">{t("taxNumber")}</Label>
+                <Input {...form.register("taxNumber")} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="notes">{t("notes")}</Label>
+                <Textarea {...form.register("notes")} />
+              </div>
+              <Button type="submit" className="w-full">
+                {selectedContact ? t("editContact") : t("addContact")}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </AnimatedItem>
 
+      <AnimatedItem>
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -202,8 +209,8 @@ export default function Contacts() {
               ))}
             </TableBody>
           </Table>
-        </main>
-      </div>
-    </div>
+        )}
+      </AnimatedItem>
+    </PageLayout>
   );
 }

@@ -2,8 +2,6 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Order, Contact, Product, insertOrderSchema } from "@shared/schema";
 import { t } from "@/lib/i18n";
-import { Sidebar } from "@/components/layout/sidebar";
-import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -34,30 +32,35 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Plus, Edit2, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { PageLayout } from "@/components/layout/page-layout";
+import { AnimatedItem } from "@/components/layout/animated-content";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Orders() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  const { data: orders = [] } = useQuery<Order[]>({
+  const { data: orders = [], isLoading: isLoadingOrders } = useQuery<Order[]>({
     queryKey: ["/api/orders"],
   });
 
-  const { data: contacts = [] } = useQuery<Contact[]>({
+  const { data: contacts = [], isLoading: isLoadingContacts } = useQuery<Contact[]>({
     queryKey: ["/api/contacts"],
   });
 
-  const { data: products = [] } = useQuery<Product[]>({
+  const { data: products = [], isLoading: isLoadingProducts } = useQuery<Product[]>({
     queryKey: ["/api/products"],
   });
+
+  const isLoading = isLoadingOrders || isLoadingContacts || isLoadingProducts;
 
   const form = useForm({
     resolver: zodResolver(insertOrderSchema),
     defaultValues: selectedOrder || {
       contactId: 0,
       status: "pending",
-      total: 0,
+      total: "",
       items: [],
     },
   });
@@ -112,91 +115,97 @@ export default function Orders() {
   });
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <div className="flex-1">
-        <Header />
-        <main className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold tracking-tight">{t("orders")}</h1>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  onClick={() => {
-                    setSelectedOrder(null);
-                    form.reset();
-                  }}
+    <PageLayout
+      title={t("orders")}
+      description="Rendelések kezelése"
+    >
+      <AnimatedItem className="flex justify-between items-center mb-6">
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button
+              onClick={() => {
+                setSelectedOrder(null);
+                form.reset();
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              {t("addOrder")}
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {selectedOrder ? t("editOrder") : t("addOrder")}
+              </DialogTitle>
+            </DialogHeader>
+            <form onSubmit={onSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label>{t("contacts")}</Label>
+                <Select
+                  defaultValue={String(form.getValues("contactId"))}
+                  onValueChange={(value) =>
+                    form.setValue("contactId", Number(value))
+                  }
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t("addOrder")}
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>
-                    {selectedOrder ? t("editOrder") : t("addOrder")}
-                  </DialogTitle>
-                </DialogHeader>
-                <form onSubmit={onSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>{t("contacts")}</Label>
-                    <Select
-                      defaultValue={String(form.getValues("contactId"))}
-                      onValueChange={(value) =>
-                        form.setValue("contactId", Number(value))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {contacts.map((contact) => (
-                          <SelectItem key={contact.id} value={String(contact.id)}>
-                            {contact.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {contacts.map((contact) => (
+                      <SelectItem key={contact.id} value={String(contact.id)}>
+                        {contact.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                  <div className="space-y-2">
-                    <Label>{t("status")}</Label>
-                    <Select
-                      defaultValue={form.getValues("status")}
-                      onValueChange={(value) => form.setValue("status", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">{t("pending")}</SelectItem>
-                        <SelectItem value="completed">{t("completed")}</SelectItem>
-                        <SelectItem value="cancelled">{t("cancelled")}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+              <div className="space-y-2">
+                <Label>{t("status")}</Label>
+                <Select
+                  defaultValue={form.getValues("status")}
+                  onValueChange={(value) => form.setValue("status", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">{t("pending")}</SelectItem>
+                    <SelectItem value="completed">{t("completed")}</SelectItem>
+                    <SelectItem value="cancelled">{t("cancelled")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                  <div className="space-y-2">
-                    <Label>{t("total")}</Label>
-                    <Input
-                      type="number"
-                      {...form.register("total", { valueAsNumber: true })}
-                    />
-                  </div>
+              <div className="space-y-2">
+                <Label>{t("total")}</Label>
+                <Input
+                  type="text"
+                  {...form.register("total")}
+                />
+              </div>
 
-                  <div className="space-y-2">
-                    <Label>{t("invoiceNumber")}</Label>
-                    <Input {...form.register("invoiceNumber")} />
-                  </div>
+              <div className="space-y-2">
+                <Label>{t("invoiceNumber")}</Label>
+                <Input {...form.register("invoiceNumber")} />
+              </div>
 
-                  <Button type="submit" className="w-full">
-                    {selectedOrder ? t("editOrder") : t("addOrder")}
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
+              <Button type="submit" className="w-full">
+                {selectedOrder ? t("editOrder") : t("addOrder")}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </AnimatedItem>
+
+      <AnimatedItem>
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
           </div>
-
+        ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -246,8 +255,8 @@ export default function Orders() {
               ))}
             </TableBody>
           </Table>
-        </main>
-      </div>
-    </div>
+        )}
+      </AnimatedItem>
+    </PageLayout>
   );
 }

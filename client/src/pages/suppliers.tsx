@@ -33,6 +33,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Building2, Plus, TruckIcon, PackageIcon, WalletIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { PageLayout } from "@/components/layout/page-layout";
+import { AnimatedItem } from "@/components/layout/animated-content";
 
 const supplierSchema = z.object({
   name: z.string().min(1, "Kötelező mező"),
@@ -116,256 +118,227 @@ export default function Suppliers() {
   const avgRating = suppliers.reduce((sum, s) => sum + s.rating, 0) / suppliers.length;
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <div className="flex-1">
-        <Header />
-        <main className="p-6">
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">{t("suppliers")}</h1>
-              <p className="text-muted-foreground">
-                Beszállítók kezelése
-              </p>
-            </div>
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Új beszállító
+    <PageLayout
+      title={t("suppliers")}
+      description="Beszállítók kezelése"
+    >
+      <AnimatedItem className="flex justify-between items-center mb-8">
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Új beszállító
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Új beszállító hozzáadása</DialogTitle>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Név</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="email" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Telefonszám</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="taxNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Adószám</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cím</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Kategória</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Megjegyzések</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" className="w-full">
+                  Mentés
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Új beszállító hozzáadása</DialogTitle>
-                </DialogHeader>
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Név</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="email"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Email</FormLabel>
-                            <FormControl>
-                              <Input {...field} type="email" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="phone"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Telefonszám</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="taxNumber"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Adószám</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+      </AnimatedItem>
+
+      <AnimatedItem>
+        <div className="grid gap-4 md:grid-cols-4 mb-6">
+          {[
+            {
+              title: "Aktív beszállítók",
+              icon: Building2,
+              value: `${suppliers.length} cég`,
+              description: "aktuális partnerek"
+            },
+            {
+              title: "Folyamatban lévő rendelések",
+              icon: TruckIcon,
+              value: `${totalActive} db`,
+              description: "aktív megrendelés"
+            },
+            {
+              title: "Összes kiadás",
+              icon: WalletIcon,
+              value: `${totalSpent.toLocaleString()} Ft`,
+              description: "az elmúlt 12 hónapban"
+            },
+            {
+              title: "Átlagos értékelés",
+              icon: PackageIcon,
+              value: `${avgRating.toFixed(1)}`,
+              description: "beszállítói minősítés"
+            }
+          ].map((stat, index) => (
+            <Card key={index}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {stat.title}
+                </CardTitle>
+                <stat.icon className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {stat.value}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {stat.description}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </AnimatedItem>
+
+      <AnimatedItem>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Név</TableHead>
+              <TableHead>Kategória</TableHead>
+              <TableHead>Kapcsolat</TableHead>
+              <TableHead>Adószám</TableHead>
+              <TableHead>Aktív rendelések</TableHead>
+              <TableHead>Értékelés</TableHead>
+              <TableHead>Megjegyzések</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {suppliers.map((supplier) => (
+              <TableRow key={supplier.id}>
+                <TableCell className="font-medium">
+                  <div className="space-y-1">
+                    <div>{supplier.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {supplier.address}
                     </div>
-                    <FormField
-                      control={form.control}
-                      name="address"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Cím</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="category"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Kategória</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="notes"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Megjegyzések</FormLabel>
-                          <FormControl>
-                            <Textarea {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Button type="submit" className="w-full">
-                      Mentés
-                    </Button>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-4 mb-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Aktív beszállítók
-                </CardTitle>
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {suppliers.length} cég
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  aktuális partnerek
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Folyamatban lévő rendelések
-                </CardTitle>
-                <TruckIcon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {totalActive} db
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  aktív megrendelés
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Összes kiadás
-                </CardTitle>
-                <WalletIcon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {totalSpent.toLocaleString()} Ft
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  az elmúlt 12 hónapban
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Átlagos értékelés
-                </CardTitle>
-                <PackageIcon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {avgRating.toFixed(1)}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  beszállítói minősítés
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Név</TableHead>
-                <TableHead>Kategória</TableHead>
-                <TableHead>Kapcsolat</TableHead>
-                <TableHead>Adószám</TableHead>
-                <TableHead>Aktív rendelések</TableHead>
-                <TableHead>Értékelés</TableHead>
-                <TableHead>Megjegyzések</TableHead>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="secondary">
+                    {supplier.category}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="space-y-1">
+                    <div className="text-sm">{supplier.email}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {supplier.phone}
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>{supplier.taxNumber}</TableCell>
+                <TableCell>{supplier.activeOrders} db</TableCell>
+                <TableCell>
+                  <Badge
+                    variant="default"
+                    className="bg-green-500"
+                  >
+                    {supplier.rating.toFixed(1)}
+                  </Badge>
+                </TableCell>
+                <TableCell>{supplier.notes}</TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {suppliers.map((supplier) => (
-                <TableRow key={supplier.id}>
-                  <TableCell className="font-medium">
-                    <div className="space-y-1">
-                      <div>{supplier.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {supplier.address}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">
-                      {supplier.category}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div className="text-sm">{supplier.email}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {supplier.phone}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{supplier.taxNumber}</TableCell>
-                  <TableCell>{supplier.activeOrders} db</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="default"
-                      className="bg-green-500"
-                    >
-                      {supplier.rating.toFixed(1)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{supplier.notes}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </main>
-      </div>
-    </div>
+            ))}
+          </TableBody>
+        </Table>
+      </AnimatedItem>
+    </PageLayout>
   );
 }
