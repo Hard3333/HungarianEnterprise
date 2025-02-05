@@ -63,43 +63,73 @@ export default function StockLevels() {
     >
       <AnimatedItem>
         <div className="grid gap-4 md:grid-cols-3 mb-6">
-          {[
-            {
-              title: "Összes készletérték",
-              icon: Package2,
-              value: `${totalValue.toLocaleString()} Ft`,
-              description: `${products.length} termék összértéke`
-            },
-            {
-              title: "Átlagos készletszint",
-              icon: avgStock > 100 ? ArrowUpRight : ArrowDownRight,
-              value: `${avgStock} db`,
-              description: "átlagosan termékenként",
-              iconColor: avgStock > 100 ? "text-green-500" : "text-red-500"
-            },
-            {
-              title: "Alacsony készlet",
-              icon: AlertTriangle,
-              value: `${lowStock} termék`,
-              description: "minimum szint alatt",
-              className: lowStock > 0 ? "bg-destructive/10" : undefined
-            }
-          ].map((stat, index) => (
-            <Card key={index} className={stat.className}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {stat.title}
-                </CardTitle>
-                <stat.icon className={`h-4 w-4 ${stat.iconColor || "text-muted-foreground"}`} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <p className="text-xs text-muted-foreground">
-                  {stat.description}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
+          {isLoading ? (
+            Array(3).fill(0).map((_, i) => (
+              <Card key={i}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <Skeleton className="h-4 w-[100px]" />
+                  <Skeleton className="h-4 w-4" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-8 w-[150px]" />
+                  <Skeleton className="h-4 w-[100px] mt-1" />
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Összes készletérték
+                  </CardTitle>
+                  <Package2 className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {totalValue.toLocaleString()} Ft
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {products.length} termék összértéke
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Átlagos készletszint
+                  </CardTitle>
+                  <ArrowUpRight className={`h-4 w-4 ${avgStock > 100 ? "text-green-500" : "text-red-500"}`} />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {avgStock} db
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    átlagosan termékenként
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className={lowStock > 0 ? "bg-destructive/10" : undefined}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Alacsony készlet
+                  </CardTitle>
+                  <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {lowStock} termék
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    minimum szint alatt
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
       </AnimatedItem>
 

@@ -1,5 +1,3 @@
-import { Sidebar } from "@/components/layout/sidebar";
-import { Header } from "@/components/layout/header";
 import { t } from "@/lib/i18n";
 import { useQuery } from "@tanstack/react-query";
 import { Order, Product } from "@shared/schema";
@@ -179,37 +177,41 @@ export default function Reports() {
               <CardTitle>Bevétel vs. Kiadás</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={monthlyData}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--background))",
-                        border: "1px solid hsl(var(--border))"
-                      }}
-                      formatter={(value: number) => `${value.toLocaleString()} Ft`}
-                    />
-                    <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="revenue"
-                      name="Bevétel"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth={2}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="expenses"
-                      name="Kiadás"
-                      stroke="hsl(var(--destructive))"
-                      strokeWidth={2}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
+              {isLoading ? (
+                <Skeleton className="h-[300px] w-full" />
+              ) : (
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={monthlyData}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--background))",
+                          border: "1px solid hsl(var(--border))"
+                        }}
+                        formatter={(value: number) => `${value.toLocaleString()} Ft`}
+                      />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="revenue"
+                        name="Bevétel"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={2}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="expenses"
+                        name="Kiadás"
+                        stroke="hsl(var(--destructive))"
+                        strokeWidth={2}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -218,32 +220,36 @@ export default function Reports() {
               <CardTitle>Ügyfélszegmensek</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={customerSegments}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      label={({ name, value }) => `${name} ${value}%`}
-                    >
-                      {customerSegments.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--background))",
-                        border: "1px solid hsl(var(--border))"
-                      }}
-                      formatter={(value: number) => `${value}%`}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+              {isLoading ? (
+                <Skeleton className="h-[300px] w-full" />
+              ) : (
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={customerSegments}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        label={({ name, value }) => `${name} ${value}%`}
+                      >
+                        {customerSegments.map((_, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--background))",
+                          border: "1px solid hsl(var(--border))"
+                        }}
+                        formatter={(value: number) => `${value}%`}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -256,23 +262,27 @@ export default function Reports() {
               <CardTitle>Top termékek</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={productPerformance} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis type="number" />
-                    <YAxis type="category" dataKey="name" width={150} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--background))",
-                        border: "1px solid hsl(var(--border))"
-                      }}
-                      formatter={(value: number) => `${value.toLocaleString()} Ft`}
-                    />
-                    <Bar dataKey="revenue" fill="hsl(var(--primary))" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              {isLoading ? (
+                <Skeleton className="h-[300px] w-full" />
+              ) : (
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={productPerformance} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                      <XAxis type="number" />
+                      <YAxis type="category" dataKey="name" width={150} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--background))",
+                          border: "1px solid hsl(var(--border))"
+                        }}
+                        formatter={(value: number) => `${value.toLocaleString()} Ft`}
+                      />
+                      <Bar dataKey="revenue" fill="hsl(var(--primary))" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -281,44 +291,52 @@ export default function Reports() {
               <CardTitle>Készletszint állapot</CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Termék</TableHead>
-                    <TableHead>Készlet</TableHead>
-                    <TableHead>Státusz</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {products.slice(0, 5).map((product) => {
-                    const stockRatio = product.minStockLevel
-                      ? (product.stockLevel / product.minStockLevel) * 100
-                      : 100;
+              {isLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Termék</TableHead>
+                      <TableHead>Készlet</TableHead>
+                      <TableHead>Státusz</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {products.slice(0, 5).map((product) => {
+                      const stockRatio = product.minStockLevel
+                        ? (product.stockLevel / product.minStockLevel) * 100
+                        : 100;
 
-                    return (
-                      <TableRow key={product.id}>
-                        <TableCell className="font-medium">
-                          {product.name.length > 30
-                            ? product.name.substring(0, 30) + '...'
-                            : product.name}
-                        </TableCell>
-                        <TableCell>{product.stockLevel} {product.unit}</TableCell>
-                        <TableCell className="w-[200px]">
-                          <div className="flex items-center gap-2">
-                            <Progress
-                              value={stockRatio}
-                              className={stockRatio < 100 ? "text-destructive" : ""}
-                            />
-                            <span className="text-sm text-muted-foreground w-12">
-                              {Math.round(stockRatio)}%
-                            </span>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                      return (
+                        <TableRow key={product.id}>
+                          <TableCell className="font-medium">
+                            {product.name.length > 30
+                              ? product.name.substring(0, 30) + '...'
+                              : product.name}
+                          </TableCell>
+                          <TableCell>{product.stockLevel} {product.unit}</TableCell>
+                          <TableCell className="w-[200px]">
+                            <div className="flex items-center gap-2">
+                              <Progress
+                                value={stockRatio}
+                                className={stockRatio < 100 ? "text-destructive" : ""}
+                              />
+                              <span className="text-sm text-muted-foreground w-12">
+                                {Math.round(stockRatio)}%
+                              </span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </div>
