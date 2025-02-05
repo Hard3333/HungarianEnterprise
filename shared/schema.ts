@@ -21,7 +21,7 @@ export const products = pgTable("products", {
   unit: text("unit").default("db"),
 });
 
-// Contacts table
+// Contacts table (combined customers and suppliers)
 export const contacts = pgTable("contacts", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -31,6 +31,10 @@ export const contacts = pgTable("contacts", {
   address: text("address"),
   taxNumber: text("tax_number"),
   notes: text("notes"),
+  totalOrders: integer("total_orders").default(0),
+  totalSpent: numeric("total_spent").default("0"),
+  lastOrderDate: timestamp("last_order_date"),
+  rating: numeric("rating"), // For suppliers only
 });
 
 // Orders table
@@ -40,26 +44,19 @@ export const orders = pgTable("orders", {
   orderDate: timestamp("order_date").notNull().defaultNow(),
   status: text("status").notNull(), // pending, completed, cancelled
   total: numeric("total").notNull(),
-  items: jsonb("items").notNull(), // Array of {productId, quantity, price}
+  items: jsonb("items").notNull(), // Array of OrderItem
   invoiceNumber: text("invoice_number"),
   notes: text("notes"),
 });
 
-// Add new tables for deliveries
+// Deliveries table
 export const deliveries = pgTable("deliveries", {
   id: serial("id").primaryKey(),
   supplierId: integer("supplier_id").notNull(),
   expectedDate: timestamp("expected_date").notNull(),
   status: text("status").notNull(), // pending, in_transit, received, cancelled
   notes: text("notes"),
-});
-
-export const deliveryItems = pgTable("delivery_items", {
-  id: serial("id").primaryKey(),
-  deliveryId: integer("delivery_id").notNull(),
-  productId: integer("product_id").notNull(),
-  quantity: integer("quantity").notNull(),
-  price: numeric("price").notNull(),
+  items: jsonb("items").notNull(), // Array of DeliveryItem
 });
 
 // Schema validations with proper type transformations
@@ -69,17 +66,16 @@ export const insertProductSchema = createInsertSchema(products, {
   price: z.number().or(z.string()).transform(val => String(val)),
 });
 
-export const insertContactSchema = createInsertSchema(contacts);
+export const insertContactSchema = createInsertSchema(contacts, {
+  totalSpent: z.number().or(z.string()).transform(val => String(val)).optional(),
+  rating: z.number().or(z.string()).transform(val => String(val)).optional(),
+});
 
 export const insertOrderSchema = createInsertSchema(orders, {
   total: z.number().or(z.string()).transform(val => String(val)),
 });
 
-// Add new schemas
 export const insertDeliverySchema = createInsertSchema(deliveries);
-export const insertDeliveryItemSchema = createInsertSchema(deliveryItems, {
-  price: z.number().or(z.string()).transform(val => String(val)),
-});
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -100,9 +96,11 @@ export type OrderItem = {
   price: string;
 };
 
-// Add new types
 export type Delivery = typeof deliveries.$inferSelect;
 export type InsertDelivery = z.infer<typeof insertDeliverySchema>;
 
-export type DeliveryItem = typeof deliveryItems.$inferSelect;
-export type InsertDeliveryItem = z.infer<typeof insertDeliveryItemSchema>;
+export type DeliveryItem = {
+  productId: number;
+  quantity: number;
+  price: string;
+};
