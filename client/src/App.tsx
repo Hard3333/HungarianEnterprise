@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { ProtectedRoute } from "@/lib/protected-route";
+import { AnimatePresence } from "framer-motion";
 import AuthPage from "@/pages/auth-page";
 import Dashboard from "@/pages/dashboard";
 import Inventory from "@/pages/inventory";
@@ -24,24 +25,26 @@ import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
-    <Switch>
-      <ProtectedRoute path="/" component={Dashboard} />
-      <ProtectedRoute path="/inventory" component={Inventory} />
-      <ProtectedRoute path="/orders" component={Orders} />
-      <ProtectedRoute path="/contacts" component={Contacts} />
-      <ProtectedRoute path="/stock-levels" component={StockLevels} />
-      <ProtectedRoute path="/incoming" component={IncomingDeliveries} />
-      <ProtectedRoute path="/invoices" component={Invoices} />
-      <ProtectedRoute path="/customers" component={Customers} />
-      <ProtectedRoute path="/bills" component={Bills} />
-      <ProtectedRoute path="/reports" component={Reports} />
-      <ProtectedRoute path="/accounting" component={Accounting} />
-      <ProtectedRoute path="/employees" component={Employees} />
-      <ProtectedRoute path="/suppliers" component={Suppliers} />
-      <ProtectedRoute path="/settings" component={Settings} />
-      <Route path="/auth" component={AuthPage} />
-      <Route component={NotFound} />
-    </Switch>
+    <AnimatePresence mode="wait">
+      <Switch>
+        <ProtectedRoute path="/" component={Dashboard} />
+        <ProtectedRoute path="/inventory" component={Inventory} />
+        <ProtectedRoute path="/orders" component={Orders} />
+        <ProtectedRoute path="/contacts" component={Contacts} />
+        <ProtectedRoute path="/stock-levels" component={StockLevels} />
+        <ProtectedRoute path="/incoming" component={IncomingDeliveries} />
+        <ProtectedRoute path="/invoices" component={Invoices} />
+        <ProtectedRoute path="/customers" component={Customers} />
+        <ProtectedRoute path="/bills" component={Bills} />
+        <ProtectedRoute path="/reports" component={Reports} />
+        <ProtectedRoute path="/accounting" component={Accounting} />
+        <ProtectedRoute path="/employees" component={Employees} />
+        <ProtectedRoute path="/suppliers" component={Suppliers} />
+        <ProtectedRoute path="/settings" component={Settings} />
+        <Route path="/auth" component={AuthPage} />
+        <Route component={NotFound} />
+      </Switch>
+    </AnimatePresence>
   );
 }
 
