@@ -55,6 +55,9 @@ export class DatabaseStorage implements IStorage {
   async getUser(id: number): Promise<User | undefined> {
     try {
       const [user] = await db.select().from(users).where(eq(users.id, id));
+      if (!user) {
+        console.log(`No user found with id: ${id}`);
+      }
       return user;
     } catch (error) {
       console.error('Error getting user:', error);
@@ -65,6 +68,9 @@ export class DatabaseStorage implements IStorage {
   async getUserByUsername(username: string): Promise<User | undefined> {
     try {
       const [user] = await db.select().from(users).where(eq(users.username, username));
+      if (!user) {
+        console.log(`No user found with username: ${username}`);
+      }
       return user;
     } catch (error) {
       console.error('Error getting user by username:', error);
@@ -73,8 +79,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    const [newUser] = await db.insert(users).values(user).returning();
-    return newUser;
+    try {
+      const [newUser] = await db.insert(users).values(user).returning();
+      console.log('Created new user:', newUser.id);
+      return newUser;
+    } catch (error) {
+      console.error('Error creating user:', error);
+      throw error;
+    }
   }
 
   // Product operations
