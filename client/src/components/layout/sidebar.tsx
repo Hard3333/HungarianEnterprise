@@ -54,7 +54,6 @@ const navigation: MenuItem[] = [
     label: "finances",
     submenu: [
       { icon: FileText, label: "invoices", href: "/invoices" },
-      { icon: FileText, label: "bills", href: "/bills" },
       { icon: PieChart, label: "reports", href: "/reports" },
       { icon: ClipboardList, label: "accounting", href: "/accounting" },
     ]
