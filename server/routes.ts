@@ -70,8 +70,8 @@ export function registerRoutes(app: Express): Server {
   app.delete("/api/products/batch", async (req, res) => {
     try {
       const { ids } = req.body;
-      if (!Array.isArray(ids)) {
-        return res.status(400).json({ message: 'IDs must be an array' });
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: 'Invalid input: expected non-empty array of IDs' });
       }
 
       await storage.deleteProducts(ids);
@@ -79,6 +79,17 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error('Error deleting products:', error);
       res.status(500).json({ message: 'Failed to delete products' });
+    }
+  });
+
+  app.delete("/api/products/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteProduct(id);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      res.status(500).json({ message: 'Failed to delete product' });
     }
   });
 
@@ -108,16 +119,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.delete("/api/products/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      await storage.deleteProduct(id);
-      res.sendStatus(204);
-    } catch (error) {
-      console.error('Error deleting product:', error);
-      res.status(500).json({ message: 'Failed to delete product' });
-    }
-  });
 
   // Contact routes
   app.get("/api/contacts", async (req, res) => {

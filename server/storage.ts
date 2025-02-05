@@ -130,7 +130,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteProduct(id: number): Promise<void> {
-    await db.delete(products).where(eq(products.id, id));
+    try {
+      await db.delete(products).where(eq(products.id, id));
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      throw error;
+    }
   }
 
   async createProducts(productList: InsertProduct[]): Promise<Product[]> {
@@ -169,12 +174,19 @@ export class DatabaseStorage implements IStorage {
 
   async deleteProducts(ids: number[]): Promise<void> {
     try {
-      // Ensure ids is an array
-      const idsArray = Array.isArray(ids) ? ids : [ids];
-      // Convert numbers to strings for SQL IN clause
-      await db
-        .delete(products)
-        .where(sql`${products.id} IN (${idsArray.map(id => id.toString()).join(', ')})`);
+      // Ensure ids is an array and not empty
+      if (!Array.isArray(ids) || ids.length === 0) {
+        throw new Error('Invalid input: expected non-empty array of IDs');
+      }
+
+      // Create placeholders for the prepared statement
+      const placeholders = ids.map((_, i) => `$${i + 1}`).join(', ');
+
+      // Use raw query for bulk delete with prepared statement
+      await db.execute(
+        sql`DELETE FROM ${products} WHERE id IN (${sql.raw(placeholders)})`,
+        ids
+      );
     } catch (error) {
       console.error('Error deleting products in batch:', error);
       throw error;
