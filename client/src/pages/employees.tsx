@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Users, Plus, Building2, Briefcase, CircleDollarSign } from "lucide-react";
+import { Users, Plus, Building2, Briefcase, CircleDollarSign, Filter, Save, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -36,10 +36,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Slider } from "@/components/ui/slider";
 import { PageLayout } from "@/components/layout/page-layout";
 import { AnimatedItem } from "@/components/layout/animated-content";
 import { Skeleton } from "@/components/ui/skeleton";
+import { format, isWithinInterval, parseISO, subDays, subMonths, subYears } from "date-fns";
 
+// Form schemas
 const employeeSchema = z.object({
   name: z.string().min(1, "Kötelező mező"),
   email: z.string().email("Érvénytelen email cím"),
@@ -51,9 +60,57 @@ const employeeSchema = z.object({
 
 type EmployeeFormData = z.infer<typeof employeeSchema>;
 
+// Filter types
+type DateRange = "all" | "today" | "week" | "month" | "quarter" | "year" | "custom";
+type SalaryFilter = { min: number; max: number };
+type SortDirection = "asc" | "desc";
+type SortField = "name" | "department" | "position" | "startDate" | "salary";
+
+interface FilterState {
+  search: string;
+  dateRange: DateRange;
+  customDateStart?: string;
+  customDateEnd?: string;
+  salary: SalaryFilter;
+  departments: string[];
+  sortBy: SortField;
+  sortDirection: SortDirection;
+  saveFilter?: string;
+}
+
+const defaultFilter: FilterState = {
+  search: "",
+  dateRange: "all",
+  salary: { min: 0, max: 2000000 },
+  departments: [],
+  sortBy: "name",
+  sortDirection: "asc",
+};
+
+// Saved filters
+const savedFilters: { id: string; name: string; filter: FilterState }[] = [
+  { 
+    id: "recent", 
+    name: "Új belépők", 
+    filter: { ...defaultFilter, dateRange: "month" } 
+  },
+  { 
+    id: "high-salary", 
+    name: "Magas fizetésűek", 
+    filter: { ...defaultFilter, salary: { min: 1000000, max: 2000000 } } 
+  },
+  { 
+    id: "it-dept", 
+    name: "IT részleg", 
+    filter: { ...defaultFilter, departments: ["Fejlesztés", "Infrastruktúra"] } 
+  },
+];
+
 export default function Employees() {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [filterState, setFilterState] = useState<FilterState>(defaultFilter);
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
 
   // Simulate loading state
   setTimeout(() => setIsLoading(false), 1000);
@@ -116,12 +173,72 @@ export default function Employees() {
     },
   ];
 
-  const departmentCounts = employees.reduce((acc, emp) => ({
-    ...acc,
-    [emp.department]: (acc[emp.department] || 0) + 1
-  }), {} as Record<string, number>);
+  // Filter functions
+  const isWithinDateRange = (date: Date) => {
+    switch (filterState.dateRange) {
+      case "today":
+        return format(date, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
+      case "week":
+        return isWithinInterval(date, {
+          start: subDays(new Date(), 7),
+          end: new Date(),
+        });
+      case "month":
+        return isWithinInterval(date, {
+          start: subMonths(new Date(), 1),
+          end: new Date(),
+        });
+      case "year":
+        return isWithinInterval(date, {
+          start: subYears(new Date(), 1),
+          end: new Date(),
+        });
+      case "custom":
+        if (filterState.customDateStart && filterState.customDateEnd) {
+          return isWithinInterval(date, {
+            start: parseISO(filterState.customDateStart),
+            end: parseISO(filterState.customDateEnd),
+          });
+        }
+        return true;
+      default:
+        return true;
+    }
+  };
 
-  const avgSalary = employees.reduce((sum, emp) => sum + emp.salary, 0) / employees.length;
+  const matchesSearch = (employee: any) => {
+    if (!filterState.search) return true;
+    const searchTerms = filterState.search.toLowerCase().split(" ");
+
+    return searchTerms.every(term => {
+      const searchString = [
+        employee.name,
+        employee.email,
+        employee.position,
+        employee.department,
+      ].join(" ").toLowerCase();
+
+      return searchString.includes(term);
+    });
+  };
+
+  const matchesSalary = (salary: number) => {
+    return salary >= filterState.salary.min && salary <= filterState.salary.max;
+  };
+
+  const matchesDepartment = (department: string) => {
+    if (filterState.departments.length === 0) return true;
+    return filterState.departments.includes(department);
+  };
+
+  // Filter application
+  const filteredEmployees = employees.filter(employee => {
+    if (!matchesSearch(employee)) return false;
+    if (!isWithinDateRange(new Date(employee.startDate))) return false;
+    if (!matchesSalary(employee.salary)) return false;
+    if (!matchesDepartment(employee.department)) return false;
+    return true;
+  });
 
   return (
     <PageLayout
@@ -129,6 +246,199 @@ export default function Employees() {
       description="Alkalmazottak kezelése"
     >
       <AnimatedItem className="flex justify-between items-center mb-8">
+        <div className="flex gap-4">
+          <Input
+            placeholder="Keresés név, email vagy pozíció alapján..."
+            value={filterState.search}
+            onChange={(e) => setFilterState(prev => ({ ...prev, search: e.target.value }))}
+            className="w-96"
+          />
+
+          <Popover open={showFilterMenu} onOpenChange={setShowFilterMenu}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Filter className="h-4 w-4" />
+                Szűrők
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-96">
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-medium mb-2">Mentett szűrők</h4>
+                  <Select
+                    value={filterState.saveFilter}
+                    onValueChange={(value) => {
+                      const saved = savedFilters.find(f => f.id === value);
+                      if (saved) {
+                        setFilterState(saved.filter);
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Válassz mentett szűrőt" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {savedFilters.map(filter => (
+                        <SelectItem key={filter.id} value={filter.id}>
+                          {filter.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-medium">Belépés ideje</h4>
+                  <Select
+                    value={filterState.dateRange}
+                    onValueChange={(v) => setFilterState(prev => ({ ...prev, dateRange: v as DateRange }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Válassz időszakot" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Összes</SelectItem>
+                      <SelectItem value="today">Mai</SelectItem>
+                      <SelectItem value="week">Elmúlt 7 nap</SelectItem>
+                      <SelectItem value="month">Elmúlt 30 nap</SelectItem>
+                      <SelectItem value="year">Elmúlt 1 év</SelectItem>
+                      <SelectItem value="custom">Egyéni időszak</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {filterState.dateRange === "custom" && (
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      <div>
+                        <label className="text-sm text-muted-foreground">Kezdő dátum</label>
+                        <Input
+                          type="date"
+                          value={filterState.customDateStart}
+                          onChange={(e) => setFilterState(prev => ({
+                            ...prev,
+                            customDateStart: e.target.value
+                          }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm text-muted-foreground">Záró dátum</label>
+                        <Input
+                          type="date"
+                          value={filterState.customDateEnd}
+                          onChange={(e) => setFilterState(prev => ({
+                            ...prev,
+                            customDateEnd: e.target.value
+                          }))}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-medium">Rendezés</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select
+                      value={filterState.sortBy}
+                      onValueChange={(value) => setFilterState(prev => ({ ...prev, sortBy: value as SortField }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Rendezés alapja" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="name">Név</SelectItem>
+                        <SelectItem value="department">Részleg</SelectItem>
+                        <SelectItem value="position">Pozíció</SelectItem>
+                        <SelectItem value="startDate">Belépés dátuma</SelectItem>
+                        <SelectItem value="salary">Fizetés</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <Select
+                      value={filterState.sortDirection}
+                      onValueChange={(value) => setFilterState(prev => ({ ...prev, sortDirection: value as SortDirection }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Irány" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="asc">Növekvő</SelectItem>
+                        <SelectItem value="desc">Csökkenő</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-medium">Fizetési tartomány</h4>
+                  <div className="px-2">
+                    <Slider
+                      defaultValue={[filterState.salary.min, filterState.salary.max]}
+                      max={2000000}
+                      step={50000}
+                      onValueChange={([min, max]) => setFilterState(prev => ({
+                        ...prev,
+                        salary: { min, max }
+                      }))}
+                    />
+                  </div>
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>{filterState.salary.min.toLocaleString()} Ft</span>
+                    <span>{filterState.salary.max.toLocaleString()} Ft</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-medium">Részlegek</h4>
+                  <div className="space-y-2">
+                    {["Fejlesztés", "Design", "Infrastruktúra", "HR", "Marketing"].map((department) => (
+                      <div key={department} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={department}
+                          checked={filterState.departments.includes(department)}
+                          onCheckedChange={(checked) => {
+                            setFilterState(prev => ({
+                              ...prev,
+                              departments: checked
+                                ? [...prev.departments, department]
+                                : prev.departments.filter(d => d !== department)
+                            }));
+                          }}
+                        />
+                        <label
+                          htmlFor={department}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          {department}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex justify-between">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => setFilterState(defaultFilter)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Alaphelyzet
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => setShowFilterMenu(false)}
+                  >
+                    <Save className="h-4 w-4" />
+                    Mentés
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -266,7 +576,7 @@ export default function Employees() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {employees.length} fő
+                    {filteredEmployees.length} fő
                   </div>
                   <p className="text-xs text-muted-foreground">
                     aktív alkalmazott
@@ -283,7 +593,7 @@ export default function Employees() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {Object.keys(departmentCounts).length} db
+                    {Array.from(new Set(filteredEmployees.map(e => e.department))).length} db
                   </div>
                   <p className="text-xs text-muted-foreground">
                     aktív részleg
@@ -317,7 +627,7 @@ export default function Employees() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {avgSalary.toLocaleString()} Ft
+                    {(filteredEmployees.reduce((sum, emp) => sum + emp.salary, 0) / filteredEmployees.length).toLocaleString()} Ft
                   </div>
                   <p className="text-xs text-muted-foreground">
                     bruttó átlagfizetés
@@ -349,7 +659,7 @@ export default function Employees() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {employees.map((employee) => (
+              {filteredEmployees.map((employee) => (
                 <TableRow key={employee.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
