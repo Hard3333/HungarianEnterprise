@@ -37,7 +37,7 @@ import { z } from "zod";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { format } from "date-fns";
+import { format, isWithinInterval, parseISO, subDays } from "date-fns";
 import {
   FileText,
   TrendingUp,
@@ -46,7 +46,10 @@ import {
   Plus,
   Receipt,
   BanknoteIcon,
-  Loader2
+  Loader2,
+  Filter,
+  Save,
+  Trash2,
 } from "lucide-react";
 import { PageLayout } from "@/components/layout/page-layout";
 import { AnimatedItem } from "@/components/layout/animated-content";
@@ -58,6 +61,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Slider } from "@/components/ui/slider";
 
 // Form schemas
 const billSchema = z.object({
@@ -71,13 +81,37 @@ const billSchema = z.object({
 
 type BillFormData = z.infer<typeof billSchema>;
 
+// Filter types
+type DateRange = "all" | "today" | "week" | "month" | "custom";
+type AmountFilter = { min: number; max: number };
+type StatusFilter = ("completed" | "pending" | "overdue")[];
+
+interface FilterState {
+  search: string;
+  dateRange: DateRange;
+  customDateStart?: string;
+  customDateEnd?: string;
+  amount: AmountFilter;
+  statuses: StatusFilter;
+  categories: string[];
+}
+
+const defaultFilter: FilterState = {
+  search: "",
+  dateRange: "all",
+  amount: { min: 0, max: 10000000 },
+  statuses: ["completed", "pending", "overdue"],
+  categories: [],
+};
+
 export default function Invoices() {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"outgoing" | "incoming">("outgoing");
-  const [filter, setFilter] = useState<"all" | "paid" | "pending" | "overdue">("all");
-  const [search, setSearch] = useState("");
+  const [filterState, setFilterState] = useState<FilterState>(defaultFilter);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
 
+  // Form handling
   const form = useForm<BillFormData>({
     resolver: zodResolver(billSchema),
     defaultValues: {
@@ -92,7 +126,6 @@ export default function Invoices() {
 
   const onSubmit = (data: BillFormData) => {
     setIsSubmitting(true);
-    // Simulate API call
     setTimeout(() => {
       console.log(data);
       setOpen(false);
@@ -101,6 +134,7 @@ export default function Invoices() {
     }, 1000);
   };
 
+  // Data fetching
   const { data: orders = [], isLoading: isLoadingOrders } = useQuery<Order[]>({
     queryKey: ["/api/orders"],
   });
@@ -111,27 +145,66 @@ export default function Invoices() {
 
   const isLoading = isLoadingOrders || isLoadingContacts;
 
-  // Outgoing invoices data
-  const invoices = orders.filter(order => order.invoiceNumber);
-  const filteredInvoices = invoices.filter(invoice => {
-    const matchesSearch =
-      invoice.invoiceNumber?.toLowerCase().includes(search.toLowerCase()) ||
-      contacts.find(c => c.id === invoice.contactId)?.name.toLowerCase().includes(search.toLowerCase());
-
-    if (!matchesSearch) return false;
-
-    switch (filter) {
-      case "paid":
-        return invoice.status === "completed";
-      case "pending":
-        return invoice.status === "pending";
-      case "overdue":
-        return invoice.status === "pending" && new Date(invoice.orderDate) < new Date(Date.now() - 15 * 24 * 60 * 60 * 1000);
+  // Filter functions
+  const isWithinDateRange = (date: Date) => {
+    switch (filterState.dateRange) {
+      case "today":
+        return format(date, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
+      case "week":
+        return isWithinInterval(date, {
+          start: subDays(new Date(), 7),
+          end: new Date(),
+        });
+      case "month":
+        return isWithinInterval(date, {
+          start: subDays(new Date(), 30),
+          end: new Date(),
+        });
+      case "custom":
+        if (filterState.customDateStart && filterState.customDateEnd) {
+          return isWithinInterval(date, {
+            start: parseISO(filterState.customDateStart),
+            end: parseISO(filterState.customDateEnd),
+          });
+        }
+        return true;
       default:
         return true;
     }
+  };
+
+  const matchesSearch = (invoice: any, contacts: Contact[]) => {
+    const searchLower = filterState.search.toLowerCase();
+    const customer = contacts.find(c => c.id === invoice.contactId);
+
+    return (
+      invoice.invoiceNumber?.toLowerCase().includes(searchLower) ||
+      customer?.name.toLowerCase().includes(searchLower) ||
+      customer?.email?.toLowerCase().includes(searchLower) ||
+      customer?.phone?.toLowerCase().includes(searchLower)
+    );
+  };
+
+  const matchesAmount = (amount: number) => {
+    return amount >= filterState.amount.min && amount <= filterState.amount.max;
+  };
+
+  // Filter application
+  const invoices = orders.filter(order => order.invoiceNumber);
+  const filteredInvoices = invoices.filter(invoice => {
+    if (!matchesSearch(invoice, contacts)) return false;
+    if (!isWithinDateRange(new Date(invoice.orderDate))) return false; //Corrected line
+    if (!matchesAmount(parseFloat(invoice.total))) return false;
+
+    const dueDate = new Date(invoice.orderDate);
+    dueDate.setDate(dueDate.getDate() + 15);
+    const isOverdue = invoice.status === "pending" && dueDate < new Date();
+    const currentStatus = isOverdue ? "overdue" : invoice.status;
+
+    return filterState.statuses.includes(currentStatus as any);
   });
 
+  // Stats calculations
   const totalRevenue = invoices.reduce((sum, invoice) =>
     invoice.status === "completed" ? sum + parseFloat(invoice.total) : sum, 0
   );
@@ -249,23 +322,132 @@ export default function Invoices() {
             </div>
 
             <div className="flex gap-4 mb-6">
-              <Input
-                placeholder="Keresés számlaszám vagy ügyfél alapján..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="max-w-sm"
-              />
-              <Select value={filter} onValueChange={(v) => setFilter(v as any)}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Státusz" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Összes számla</SelectItem>
-                  <SelectItem value="paid">Kifizetett</SelectItem>
-                  <SelectItem value="pending">Függőben</SelectItem>
-                  <SelectItem value="overdue">Késedelmes</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex-1">
+                <Input
+                  placeholder="Keresés számlaszám, ügyfél név, email vagy telefonszám alapján..."
+                  value={filterState.search}
+                  onChange={(e) => setFilterState(prev => ({ ...prev, search: e.target.value }))}
+                />
+              </div>
+
+              <Popover open={showFilterMenu} onOpenChange={setShowFilterMenu}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <Filter className="h-4 w-4" />
+                    Szűrők
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <h4 className="font-medium">Időszak</h4>
+                      <Select
+                        value={filterState.dateRange}
+                        onValueChange={(v) => setFilterState(prev => ({ ...prev, dateRange: v as DateRange }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Válassz időszakot" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Összes</SelectItem>
+                          <SelectItem value="today">Mai</SelectItem>
+                          <SelectItem value="week">Elmúlt 7 nap</SelectItem>
+                          <SelectItem value="month">Elmúlt 30 nap</SelectItem>
+                          <SelectItem value="custom">Egyéni időszak</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      {filterState.dateRange === "custom" && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            type="date"
+                            value={filterState.customDateStart}
+                            onChange={(e) => setFilterState(prev => ({
+                              ...prev,
+                              customDateStart: e.target.value
+                            }))}
+                          />
+                          <Input
+                            type="date"
+                            value={filterState.customDateEnd}
+                            onChange={(e) => setFilterState(prev => ({
+                              ...prev,
+                              customDateEnd: e.target.value
+                            }))}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="font-medium">Összeg tartomány</h4>
+                      <div className="px-2">
+                        <Slider
+                          defaultValue={[filterState.amount.min, filterState.amount.max]}
+                          max={10000000}
+                          step={10000}
+                          onValueChange={([min, max]) => setFilterState(prev => ({
+                            ...prev,
+                            amount: { min, max }
+                          }))}
+                        />
+                      </div>
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>{filterState.amount.min.toLocaleString()} Ft</span>
+                        <span>{filterState.amount.max.toLocaleString()} Ft</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="font-medium">Státusz</h4>
+                      <div className="space-y-2">
+                        {["completed", "pending", "overdue"].map((status) => (
+                          <div key={status} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={status}
+                              checked={filterState.statuses.includes(status as any)}
+                              onCheckedChange={(checked) => {
+                                setFilterState(prev => ({
+                                  ...prev,
+                                  statuses: checked
+                                    ? [...prev.statuses, status as any]
+                                    : prev.statuses.filter(s => s !== status)
+                                }));
+                              }}
+                            />
+                            <label
+                              htmlFor={status}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                              {status === "completed" ? "Kifizetett" : status === "pending" ? "Függőben" : "Késedelmes"}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => setFilterState(defaultFilter)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Alaphelyzet
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => setShowFilterMenu(false)}
+                      >
+                        <Save className="h-4 w-4" />
+                        Mentés
+                      </Button>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
 
             {isLoading ? (
