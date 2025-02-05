@@ -18,20 +18,82 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Plus, Edit2, Trash2 } from "lucide-react";
+import { Plus, Edit2, Trash2, Filter, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { PageLayout } from "@/components/layout/page-layout";
 import { AnimatedItem } from "@/components/layout/animated-content";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Slider } from "@/components/ui/slider";
+
+// Filter types
+type StockRange = "all" | "low" | "optimal" | "high" | "custom";
+type ValueRange = "all" | "low" | "medium" | "high" | "custom";
+type StockFilter = { min: number; max: number };
+type ValueFilter = { min: number; max: number };
+type SortDirection = "asc" | "desc";
+type SortField = "name" | "sku" | "price" | "stockLevel";
+
+interface FilterState {
+  search: string;
+  stockRange: StockRange;
+  valueRange: ValueRange;
+  stockLevels: StockFilter;
+  valueFilter: ValueFilter;
+  categories: string[];
+  sortBy: SortField;
+  sortDirection: SortDirection;
+  showLowStock: boolean;
+  saveFilter?: string;
+}
+
+const defaultFilter: FilterState = {
+  search: "",
+  stockRange: "all",
+  valueRange: "all",
+  stockLevels: { min: 0, max: 1000 },
+  valueFilter: { min: 0, max: 1000000 },
+  categories: [],
+  sortBy: "name",
+  sortDirection: "asc",
+  showLowStock: false,
+};
+
+// Saved filters
+const savedFilters: { id: string; name: string; filter: FilterState }[] = [
+  {
+    id: "low-stock",
+    name: "Alacsony készlet",
+    filter: { ...defaultFilter, stockRange: "low", showLowStock: true }
+  },
+  {
+    id: "high-value",
+    name: "Magas értékű termékek",
+    filter: { ...defaultFilter, valueRange: "high" }
+  },
+  {
+    id: "critical",
+    name: "Kritikus termékek",
+    filter: { ...defaultFilter, stockRange: "low", showLowStock: true }
+  }
+];
 
 export default function Inventory() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [filterState, setFilterState] = useState<FilterState>(defaultFilter);
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
   const { toast } = useToast();
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
@@ -50,6 +112,90 @@ export default function Inventory() {
     },
   });
 
+  // Filter functions
+  const matchesSearch = (product: Product) => {
+    if (!filterState.search) return true;
+    const searchTerms = filterState.search.toLowerCase().split(" ");
+
+    return searchTerms.every(term => {
+      const searchString = [
+        product.name,
+        product.sku
+      ].join(" ").toLowerCase();
+
+      return searchString.includes(term);
+    });
+  };
+
+  const matchesStockRange = (product: Product) => {
+    const ratio = product.minStockLevel 
+      ? (product.stockLevel / product.minStockLevel)
+      : 1;
+
+    switch (filterState.stockRange) {
+      case "low":
+        return ratio < 1;
+      case "optimal":
+        return ratio >= 1 && ratio <= 1.5;
+      case "high":
+        return ratio > 1.5;
+      case "custom":
+        return product.stockLevel >= filterState.stockLevels.min && 
+               product.stockLevel <= filterState.stockLevels.max;
+      default:
+        return true;
+    }
+  };
+
+  const matchesValueRange = (product: Product) => {
+    const value = parseFloat(product.price) * product.stockLevel;
+
+    switch (filterState.valueRange) {
+      case "low":
+        return value < 100000;
+      case "medium":
+        return value >= 100000 && value <= 500000;
+      case "high":
+        return value > 500000;
+      case "custom":
+        return value >= filterState.valueFilter.min && 
+               value <= filterState.valueFilter.max;
+      default:
+        return true;
+    }
+  };
+
+  const matchesCategory = (product: Product) => {
+    if (filterState.categories.length === 0) return true;
+    return filterState.categories.includes(product.department);
+  };
+
+  // Filter and sort products
+  const filteredProducts = products
+    .filter(p => 
+      matchesSearch(p) &&
+      matchesStockRange(p) &&
+      matchesValueRange(p) &&
+      matchesCategory(p)
+    )
+    .sort((a, b) => {
+      const direction = filterState.sortDirection === "asc" ? 1 : -1;
+
+      switch (filterState.sortBy) {
+        case "name":
+          return direction * a.name.localeCompare(b.name);
+        case "sku":
+          return direction * a.sku.localeCompare(b.sku);
+        case "price":
+          return direction * (parseFloat(a.price) - parseFloat(b.price));
+        case "stockLevel":
+          return direction * (a.stockLevel - b.stockLevel);
+        default:
+          return 0;
+      }
+    });
+
+  // Mutations
   const createMutation = useMutation({
     mutationFn: async (data: Product) => {
       const res = await apiRequest("POST", "/api/products", data);
@@ -105,6 +251,222 @@ export default function Inventory() {
       description="Készletkezelés és termékinformációk"
     >
       <AnimatedItem className="flex justify-between items-center mb-6">
+        <div className="flex gap-4">
+          <Input
+            placeholder="Keresés név vagy cikkszám alapján..."
+            value={filterState.search}
+            onChange={(e) => setFilterState(prev => ({ ...prev, search: e.target.value }))}
+            className="w-96"
+          />
+
+          <Popover open={showFilterMenu} onOpenChange={setShowFilterMenu}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Filter className="h-4 w-4" />
+                Szűrők
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-96">
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-medium mb-2">Mentett szűrők</h4>
+                  <Select
+                    value={filterState.saveFilter}
+                    onValueChange={(value) => {
+                      const saved = savedFilters.find(f => f.id === value);
+                      if (saved) {
+                        setFilterState(saved.filter);
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Válassz mentett szűrőt" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {savedFilters.map(filter => (
+                        <SelectItem key={filter.id} value={filter.id}>
+                          {filter.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-medium">Készletszint</h4>
+                  <Select
+                    value={filterState.stockRange}
+                    onValueChange={(v) => setFilterState(prev => ({ 
+                      ...prev, 
+                      stockRange: v as StockRange 
+                    }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Válassz készletszintet" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Összes</SelectItem>
+                      <SelectItem value="low">Alacsony készlet</SelectItem>
+                      <SelectItem value="optimal">Optimális készlet</SelectItem>
+                      <SelectItem value="high">Magas készlet</SelectItem>
+                      <SelectItem value="custom">Egyéni tartomány</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {filterState.stockRange === "custom" && (
+                    <div className="space-y-2 mt-2">
+                      <div className="px-2">
+                        <Slider
+                          defaultValue={[filterState.stockLevels.min, filterState.stockLevels.max]}
+                          max={1000}
+                          step={10}
+                          onValueChange={([min, max]) => setFilterState(prev => ({
+                            ...prev,
+                            stockLevels: { min, max }
+                          }))}
+                        />
+                      </div>
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>{filterState.stockLevels.min} db</span>
+                        <span>{filterState.stockLevels.max} db</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-medium">Készletérték</h4>
+                  <Select
+                    value={filterState.valueRange}
+                    onValueChange={(v) => setFilterState(prev => ({ 
+                      ...prev, 
+                      valueRange: v as ValueRange 
+                    }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Válassz értéktartományt" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Összes</SelectItem>
+                      <SelectItem value="low">Alacsony érték</SelectItem>
+                      <SelectItem value="medium">Közepes érték</SelectItem>
+                      <SelectItem value="high">Magas érték</SelectItem>
+                      <SelectItem value="custom">Egyéni tartomány</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {filterState.valueRange === "custom" && (
+                    <div className="space-y-2 mt-2">
+                      <div className="px-2">
+                        <Slider
+                          defaultValue={[filterState.valueFilter.min, filterState.valueFilter.max]}
+                          max={1000000}
+                          step={10000}
+                          onValueChange={([min, max]) => setFilterState(prev => ({
+                            ...prev,
+                            valueFilter: { min, max }
+                          }))}
+                        />
+                      </div>
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>{filterState.valueFilter.min.toLocaleString()} Ft</span>
+                        <span>{filterState.valueFilter.max.toLocaleString()} Ft</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-medium">Rendezés</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select
+                      value={filterState.sortBy}
+                      onValueChange={(value) => setFilterState(prev => ({ 
+                        ...prev, 
+                        sortBy: value as SortField 
+                      }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Rendezés alapja" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="name">Név</SelectItem>
+                        <SelectItem value="sku">Cikkszám</SelectItem>
+                        <SelectItem value="price">Ár</SelectItem>
+                        <SelectItem value="stockLevel">Készletszint</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <Select
+                      value={filterState.sortDirection}
+                      onValueChange={(value) => setFilterState(prev => ({ 
+                        ...prev, 
+                        sortDirection: value as SortDirection 
+                      }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Irány" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="asc">Növekvő</SelectItem>
+                        <SelectItem value="desc">Csökkenő</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-medium">Kategóriák</h4>
+                  <div className="space-y-2">
+                    {["Alapanyag", "Késztermék", "Csomagolóanyag", "Alkatrész"].map((category) => (
+                      <div key={category} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={category}
+                          checked={filterState.categories.includes(category)}
+                          onCheckedChange={(checked) => {
+                            setFilterState(prev => ({
+                              ...prev,
+                              categories: checked
+                                ? [...prev.categories, category]
+                                : prev.categories.filter(c => c !== category)
+                            }));
+                          }}
+                        />
+                        <label
+                          htmlFor={category}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          {category}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex justify-between">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => setFilterState(defaultFilter)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Alaphelyzet
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => setShowFilterMenu(false)}
+                  >
+                    <Save className="h-4 w-4" />
+                    Mentés
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => {
@@ -187,7 +549,7 @@ export default function Inventory() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {products.map((product) => (
+              {filteredProducts.map((product) => (
                 <TableRow key={product.id}>
                   <TableCell>{product.name}</TableCell>
                   <TableCell>{product.sku}</TableCell>
