@@ -42,12 +42,28 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ message: 'Products must be an array' });
       }
 
-      const parsedProducts = products.map(product => insertProductSchema.parse(product));
+      // Validate each product using the schema
+      const parsedProducts = products.map((product, index) => {
+        try {
+          return insertProductSchema.parse({
+            name: product.name,
+            sku: product.sku,
+            price: product.price,
+            stockLevel: product.stockLevel ?? 0,
+            minStockLevel: product.minStockLevel ?? null,
+            description: product.description ?? null,
+            unit: product.unit ?? null
+          });
+        } catch (error) {
+          throw new Error(`Invalid product at index ${index}: ${error.message}`);
+        }
+      });
+
       const created = await storage.createProducts(parsedProducts);
       res.status(201).json(created);
     } catch (error) {
       console.error('Error importing products:', error);
-      res.status(500).json({ message: 'Failed to import products' });
+      res.status(500).json({ message: error instanceof Error ? error.message : 'Failed to import products' });
     }
   });
 
