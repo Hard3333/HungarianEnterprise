@@ -183,8 +183,8 @@ export class DatabaseStorage implements IStorage {
   // Delivery operations
   async getDeliveries(): Promise<Delivery[]> {
     try {
-      const deliveries = await db.select().from(deliveries);
-      return deliveries;
+      const result = await db.select().from(deliveries);
+      return result;
     } catch (error) {
       console.error('Error getting deliveries:', error);
       throw error;
