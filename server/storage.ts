@@ -1,6 +1,6 @@
 import { Contact, InsertContact, InsertOrder, InsertProduct, Order, Product, User, InsertUser, Delivery, InsertDelivery } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { users, products, contacts, orders, deliveries } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
@@ -22,6 +22,9 @@ export interface IStorage {
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(id: number, product: Partial<Product>): Promise<Product>;
   deleteProduct(id: number): Promise<void>;
+  createProducts(products: InsertProduct[]): Promise<Product[]>;
+  deleteProducts(ids: number[]): Promise<void>;
+  updateProducts(ids: number[], updates: Partial<Product>): Promise<Product[]>;
 
   // Contact operations
   getContacts(): Promise<Contact[]>;
@@ -49,12 +52,11 @@ export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
   constructor() {
-    // Inicializáljuk a session store-t a megfelelő konfigurációval
     this.sessionStore = new PostgresSessionStore({
       pool,
       createTableIfMissing: true,
-      tableName: 'session', // Explicit táblanév megadása
-      schemaName: 'public', // Schema név megadása
+      tableName: 'session',
+      schemaName: 'public',
     });
   }
 
@@ -122,6 +124,39 @@ export class DatabaseStorage implements IStorage {
 
   async deleteProduct(id: number): Promise<void> {
     await db.delete(products).where(eq(products.id, id));
+  }
+
+  async createProducts(products: InsertProduct[]): Promise<Product[]> {
+    try {
+      const createdProducts = await db.insert(products).values(products).returning();
+      return createdProducts;
+    } catch (error) {
+      console.error('Error creating products in batch:', error);
+      throw error;
+    }
+  }
+
+  async deleteProducts(ids: number[]): Promise<void> {
+    try {
+      await db.delete(products).where(sql`${products.id} = ANY(${ids})`);
+    } catch (error) {
+      console.error('Error deleting products in batch:', error);
+      throw error;
+    }
+  }
+
+  async updateProducts(ids: number[], updates: Partial<Product>): Promise<Product[]> {
+    try {
+      const updatedProducts = await db
+        .update(products)
+        .set(updates)
+        .where(sql`${products.id} = ANY(${ids})`)
+        .returning();
+      return updatedProducts;
+    } catch (error) {
+      console.error('Error updating products in batch:', error);
+      throw error;
+    }
   }
 
   // Contact operations

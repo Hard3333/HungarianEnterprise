@@ -146,17 +146,52 @@ export default function Inventory() {
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
-        const products = JSON.parse(e.target?.result as string);
-        await apiRequest("POST", "/api/products/import", { products });
-        queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-        toast({ title: t("importSuccess") });
-      } catch (error) {
+        const fileContent = e.target?.result as string;
+        const products = JSON.parse(fileContent);
+
+        if (!Array.isArray(products)) {
+          throw new Error('Invalid file format. Expected an array of products.');
+        }
+
+        // Validate each product has required fields
+        products.forEach((product, index) => {
+          if (!product.name || !product.sku || !product.price) {
+            throw new Error(`Invalid product at index ${index}. Missing required fields.`);
+          }
+        });
+
+        const response = await apiRequest("POST", "/api/products/import", { products });
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Import failed');
+        }
+
+        await queryClient.invalidateQueries({ queryKey: ["/api/products"] });
         toast({ 
-          title: t("importError"),
+          title: "Import successful",
+          description: `${products.length} products were imported.`
+        });
+      } catch (error) {
+        console.error('Import error:', error);
+        toast({ 
+          title: "Import failed",
+          description: error instanceof Error ? error.message : 'Failed to import products',
           variant: "destructive"
         });
+      } finally {
+        // Reset the file input
+        event.target.value = '';
       }
     };
+
+    reader.onerror = () => {
+      toast({ 
+        title: "Import failed",
+        description: "Failed to read the file",
+        variant: "destructive"
+      });
+    };
+
     reader.readAsText(file);
   };
 

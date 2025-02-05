@@ -34,6 +34,53 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // New batch operations for products
+  app.post("/api/products/import", async (req, res) => {
+    try {
+      const products = req.body.products;
+      if (!Array.isArray(products)) {
+        return res.status(400).json({ message: 'Products must be an array' });
+      }
+
+      const parsedProducts = products.map(product => insertProductSchema.parse(product));
+      const created = await storage.createProducts(parsedProducts);
+      res.status(201).json(created);
+    } catch (error) {
+      console.error('Error importing products:', error);
+      res.status(500).json({ message: 'Failed to import products' });
+    }
+  });
+
+  app.delete("/api/products/batch", async (req, res) => {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids)) {
+        return res.status(400).json({ message: 'IDs must be an array' });
+      }
+
+      await storage.deleteProducts(ids);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error('Error deleting products:', error);
+      res.status(500).json({ message: 'Failed to delete products' });
+    }
+  });
+
+  app.patch("/api/products/batch", async (req, res) => {
+    try {
+      const { ids, updates } = req.body;
+      if (!Array.isArray(ids) || !updates) {
+        return res.status(400).json({ message: 'Invalid request format' });
+      }
+
+      const updated = await storage.updateProducts(ids, updates);
+      res.json(updated);
+    } catch (error) {
+      console.error('Error updating products:', error);
+      res.status(500).json({ message: 'Failed to update products' });
+    }
+  });
+
   app.patch("/api/products/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
