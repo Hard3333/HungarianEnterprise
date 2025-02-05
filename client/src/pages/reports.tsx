@@ -1,4 +1,3 @@
-<replit_final_file>
 import { t } from "@/lib/i18n";
 import { useQuery } from "@tanstack/react-query";
 import { Order, Product, VatRate, VatTransaction } from "@shared/schema";
@@ -30,7 +29,7 @@ import {
   Cell,
   LineChart,
   Line,
-  Legend
+  Legend,
 } from "recharts";
 import { ArrowUpRight, ChevronUp, Warehouse, Receipt, TrendingUp } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -42,8 +41,30 @@ const COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "#2196F3", "#4
 
 const monthNames = ["Jan", "Feb", "Mar", "Apr", "Máj", "Jún", "Júl", "Aug", "Szep", "Okt", "Nov", "Dec"];
 
+interface OrderItem {
+  productId: number;
+  quantity: number;
+  price: string;
+}
+
+interface ProductPerformance {
+  name: string;
+  revenue: number;
+  units: number;
+}
+
+interface MonthlyVatData {
+  month: string;
+  collectedVAT: number;
+  transactions: number;
+}
+
+interface VatDistribution {
+  name: string;
+  value: number;
+}
+
 export default function Reports() {
-  // Queries
   const { data: orders = [], isLoading: isLoadingOrders } = useQuery<Order[]>({
     queryKey: ["/api/orders"],
   });
@@ -61,7 +82,7 @@ export default function Reports() {
   });
 
   // Calculate monthly VAT data
-  const monthlyVatData = Array.from({ length: 12 }, (_, i) => {
+  const monthlyVatData: MonthlyVatData[] = Array.from({ length: 12 }, (_, i) => {
     const month = monthNames[i];
     const monthTransactions = vatTransactions.filter(tx => {
       const txDate = new Date(tx.transactionDate);
@@ -71,16 +92,16 @@ export default function Reports() {
     return {
       month,
       collectedVAT: monthTransactions.reduce((sum, tx) => sum + Number(tx.vatAmount), 0),
-      transactions: monthTransactions.length
+      transactions: monthTransactions.length,
     };
   });
 
   // Calculate VAT rate distribution
-  const vatDistribution = vatRates.map(rate => ({
+  const vatDistribution: VatDistribution[] = vatRates.map(rate => ({
     name: rate.name,
     value: vatTransactions
       .filter(tx => tx.vatRateId === rate.id)
-      .reduce((sum, tx) => sum + Number(tx.vatAmount), 0)
+      .reduce((sum, tx) => sum + Number(tx.vatAmount), 0),
   })).sort((a, b) => b.value - a.value);
 
   const totalVAT = vatTransactions.reduce((sum, tx) => sum + Number(tx.vatAmount), 0);
@@ -88,19 +109,19 @@ export default function Reports() {
   const averageVAT = totalTransactions > 0 ? totalVAT / totalTransactions : 0;
 
   // Calculate product performance
-  const productPerformance = products
+  const productPerformance: ProductPerformance[] = products
     .map(product => ({
       name: product.name.length > 20 ? product.name.substring(0, 20) + '...' : product.name,
       revenue: orders.reduce((sum, order) => {
-        const orderItems = order.items as Array<{ productId: number; quantity: number; price: string }>;
+        const orderItems = order.items as OrderItem[];
         const item = orderItems.find(item => item.productId === product.id);
         return sum + (item ? Number(item.price) * item.quantity : 0);
       }, 0),
       units: orders.reduce((sum, order) => {
-        const orderItems = order.items as Array<{ productId: number; quantity: number }>;
+        const orderItems = order.items as OrderItem[];
         const item = orderItems.find(item => item.productId === product.id);
         return sum + (item ? item.quantity : 0);
-      }, 0)
+      }, 0),
     }))
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 5);
@@ -110,7 +131,7 @@ export default function Reports() {
   return (
     <PageLayout
       title={t("reports")}
-      description="Pénzügyi jelentések és kimutatások"
+      description={t("reportsDescription")}
     >
       {/* Summary Cards */}
       <AnimatedItem>
@@ -133,7 +154,7 @@ export default function Reports() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
-                    ÁFA összesen
+                    {t("totalVat")}
                   </CardTitle>
                   <Receipt className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
@@ -143,7 +164,7 @@ export default function Reports() {
                   </div>
                   <div className="flex items-center text-sm text-green-500">
                     <ChevronUp className="h-4 w-4" />
-                    {((totalVAT / (totalVAT - monthlyVatData[11].collectedVAT) - 1) * 100).toFixed(1)}% az előző hónaphoz képest
+                    {((totalVAT / (totalVAT - monthlyVatData[11].collectedVAT) - 1) * 100).toFixed(1)}% {t("comparedToPrevMonth")}
                   </div>
                 </CardContent>
               </Card>
@@ -151,16 +172,16 @@ export default function Reports() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
-                    Tranzakciók száma
+                    {t("numberOfTransactions")}
                   </CardTitle>
                   <Warehouse className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {totalTransactions} db
+                    {totalTransactions} {t("pieces")}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {averageVAT.toLocaleString()} Ft átlagos ÁFA / tranzakció
+                    {averageVAT.toLocaleString()} Ft {t("averageVatPerTransaction")}
                   </div>
                 </CardContent>
               </Card>
@@ -168,7 +189,7 @@ export default function Reports() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
-                    Leggyakoribb ÁFA kulcs
+                    {t("mostCommonVatRate")}
                   </CardTitle>
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
@@ -178,7 +199,7 @@ export default function Reports() {
                   </div>
                   <div className="flex items-center text-sm text-green-500">
                     <ArrowUpRight className="h-4 w-4" />
-                    {vatDistribution[0]?.value ? Math.round((vatDistribution[0].value / totalVAT) * 100) : 0}% részesedés
+                    {vatDistribution[0]?.value ? Math.round((vatDistribution[0].value / totalVAT) * 100) : 0}% {t("share")}
                   </div>
                 </CardContent>
               </Card>
@@ -192,7 +213,7 @@ export default function Reports() {
         <div className="grid gap-4 md:grid-cols-2 mb-6">
           <Card>
             <CardHeader>
-              <CardTitle>ÁFA trend</CardTitle>
+              <CardTitle>{t("vatTrend")}</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -207,7 +228,7 @@ export default function Reports() {
                       <Tooltip
                         contentStyle={{
                           backgroundColor: "hsl(var(--background))",
-                          border: "1px solid hsl(var(--border))"
+                          border: "1px solid hsl(var(--border))",
                         }}
                         formatter={(value: number) => `${value.toLocaleString()} Ft`}
                       />
@@ -215,7 +236,7 @@ export default function Reports() {
                       <Line
                         type="monotone"
                         dataKey="collectedVAT"
-                        name="Beszedett ÁFA"
+                        name={t("collectedVat")}
                         stroke="hsl(var(--primary))"
                         strokeWidth={2}
                       />
@@ -228,7 +249,7 @@ export default function Reports() {
 
           <Card>
             <CardHeader>
-              <CardTitle>ÁFA megoszlás</CardTitle>
+              <CardTitle>{t("vatDistribution")}</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -255,7 +276,7 @@ export default function Reports() {
                       <Tooltip
                         contentStyle={{
                           backgroundColor: "hsl(var(--background))",
-                          border: "1px solid hsl(var(--border))"
+                          border: "1px solid hsl(var(--border))",
                         }}
                         formatter={(value: number) => `${value.toLocaleString()} Ft`}
                       />
@@ -272,7 +293,7 @@ export default function Reports() {
       <AnimatedItem>
         <Card>
           <CardHeader>
-            <CardTitle>Legutóbbi ÁFA tranzakciók</CardTitle>
+            <CardTitle>{t("recentVatTransactions")}</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -285,11 +306,11 @@ export default function Reports() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Dátum</TableHead>
-                    <TableHead>Nettó összeg</TableHead>
-                    <TableHead>ÁFA kulcs</TableHead>
-                    <TableHead>ÁFA összeg</TableHead>
-                    <TableHead>Státusz</TableHead>
+                    <TableHead>{t("date")}</TableHead>
+                    <TableHead>{t("netAmount")}</TableHead>
+                    <TableHead>{t("vatRate")}</TableHead>
+                    <TableHead>{t("vatAmount")}</TableHead>
+                    <TableHead>{t("status")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -315,7 +336,7 @@ export default function Reports() {
                           </TableCell>
                           <TableCell>
                             <Badge variant="secondary" className={tx.reported ? "bg-green-500" : "bg-yellow-500"}>
-                              {tx.reported ? "Bejelentve" : "Függőben"}
+                              {tx.reported ? t("reported") : t("pending")}
                             </Badge>
                           </TableCell>
                         </TableRow>
@@ -333,7 +354,7 @@ export default function Reports() {
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Top termékek</CardTitle>
+              <CardTitle>{t("topProducts")}</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -348,7 +369,7 @@ export default function Reports() {
                       <Tooltip
                         contentStyle={{
                           backgroundColor: "hsl(var(--background))",
-                          border: "1px solid hsl(var(--border))"
+                          border: "1px solid hsl(var(--border))",
                         }}
                         formatter={(value: number) => `${value.toLocaleString()} Ft`}
                       />
@@ -362,7 +383,7 @@ export default function Reports() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Készletszint állapot</CardTitle>
+              <CardTitle>{t("stockLevelStatus")}</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -375,9 +396,9 @@ export default function Reports() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Termék</TableHead>
-                      <TableHead>Készlet</TableHead>
-                      <TableHead>Státusz</TableHead>
+                      <TableHead>{t("product")}</TableHead>
+                      <TableHead>{t("stock")}</TableHead>
+                      <TableHead>{t("status")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
