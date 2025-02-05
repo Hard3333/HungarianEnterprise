@@ -55,7 +55,7 @@ export function registerRoutes(app: Express): Server {
             unit: product.unit ?? null
           });
         } catch (error) {
-          throw new Error(`Invalid product at index ${index}: ${error.message}`);
+          throw new Error(`Invalid product at index ${index}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       });
 

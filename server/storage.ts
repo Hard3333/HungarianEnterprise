@@ -126,24 +126,37 @@ export class DatabaseStorage implements IStorage {
     await db.delete(products).where(eq(products.id, id));
   }
 
-  async createProducts(products: InsertProduct[]): Promise<Product[]> {
+  async createProducts(productList: InsertProduct[]): Promise<Product[]> {
     try {
+      // Explicitly use the products table and properly format the values
+      const valuesToInsert = productList.map(product => ({
+        name: product.name,
+        sku: product.sku,
+        price: product.price,
+        stockLevel: product.stockLevel ?? 0,
+        minStockLevel: product.minStockLevel ?? null,
+        description: product.description ?? null,
+        unit: product.unit ?? null
+      }));
+
       const createdProducts = await db
         .insert(products)
-        .values(products.map(product => ({
-          name: product.name,
-          sku: product.sku,
-          price: product.price,
-          stockLevel: product.stockLevel ?? 0,
-          minStockLevel: product.minStockLevel ?? null,
-          description: product.description ?? null,
-          unit: product.unit ?? null
-        })))
-        .returning();
+        .values(valuesToInsert)
+        .returning({
+          id: products.id,
+          name: products.name,
+          sku: products.sku,
+          price: products.price,
+          stockLevel: products.stockLevel,
+          minStockLevel: products.minStockLevel,
+          description: products.description,
+          unit: products.unit
+        });
+
       return createdProducts;
     } catch (error) {
       console.error('Error creating products in batch:', error);
-      throw error;
+      throw new Error(`Failed to create products: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
