@@ -162,7 +162,11 @@ export class DatabaseStorage implements IStorage {
 
   async deleteProducts(ids: number[]): Promise<void> {
     try {
-      await db.delete(products).where(sql`${products.id} = ANY(${ids})`);
+      // Ensure ids is an array and convert it to a proper Postgres array format
+      const idsArray = Array.isArray(ids) ? ids : [ids];
+      await db
+        .delete(products)
+        .where(sql`${products.id} = ANY(ARRAY[${sql.join(idsArray, sql`, `)}])`);
     } catch (error) {
       console.error('Error deleting products in batch:', error);
       throw error;
