@@ -1,6 +1,5 @@
-import { motion, AnimatePresence } from "framer-motion";
-import { useLocation } from "wouter";
-import { ReactNode } from "react";
+import { motion } from "framer-motion";
+import { type ReactNode } from "react";
 
 const container = {
   hidden: { opacity: 0 },
@@ -8,41 +7,40 @@ const container = {
     opacity: 1,
     transition: {
       staggerChildren: 0.1,
-      delayChildren: 0.2
+      delayChildren: 0.1
     }
   }
 };
 
 const item = {
-  hidden: { opacity: 0, x: -20 },
-  show: { opacity: 1, x: 0 }
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 }
 };
 
-export function AnimatedContent({ children }: { children: ReactNode }) {
-  const [location] = useLocation();
-
+export function AnimatedItem({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={location}
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -20 }}
-        transition={{ duration: 0.2 }}
-        className="flex-1"
-      >
-        <motion.div
-          variants={container}
-          initial="hidden"
-          animate="show"
-          className="h-full"
-        >
-          {children}
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+    <motion.div
+      variants={item}
+      initial="hidden"
+      animate="show"
+      className={className}
+    >
+      {children}
+    </motion.div>
   );
 }
 
-// Export a pre-configured motion.div component for animated items
-export const AnimatedItem = motion(motion.div);
+export function AnimatedContent({ children }: { children: ReactNode }) {
+  return (
+    <motion.div
+      variants={container}
+      initial="hidden"
+      animate="show"
+      className="flex-1"
+    >
+      <motion.div className="flex flex-col flex-1">
+        {children}
+      </motion.div>
+    </motion.div>
+  );
+}
