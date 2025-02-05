@@ -15,7 +15,6 @@ import StockLevels from "@/pages/stock-levels";
 import IncomingDeliveries from "@/pages/incoming";
 import Invoices from "@/pages/invoices";
 import Customers from "@/pages/customers";
-import Bills from "@/pages/bills";
 import Reports from "@/pages/reports";
 import Accounting from "@/pages/accounting";
 import Employees from "@/pages/employees";
@@ -35,7 +34,6 @@ function Router() {
         <ProtectedRoute path="/incoming" component={IncomingDeliveries} />
         <ProtectedRoute path="/invoices" component={Invoices} />
         <ProtectedRoute path="/customers" component={Customers} />
-        <ProtectedRoute path="/bills" component={Bills} />
         <ProtectedRoute path="/reports" component={Reports} />
         <ProtectedRoute path="/accounting" component={Accounting} />
         <ProtectedRoute path="/employees" component={Employees} />

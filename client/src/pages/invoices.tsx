@@ -2,9 +2,14 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Order, Contact } from "@shared/schema";
 import { t } from "@/lib/i18n";
-import { Sidebar } from "@/components/layout/sidebar";
-import { Header } from "@/components/layout/header";
-import { AnimatedContent, AnimatedItem } from "@/components/layout/animated-content";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -20,8 +25,34 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileText, TrendingUp, CreditCard, Calendar } from "lucide-react";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { Input } from "@/components/ui/input";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Textarea } from "@/components/ui/textarea";
+import { format } from "date-fns";
+import {
+  FileText,
+  TrendingUp,
+  CreditCard,
+  Calendar,
+  Plus,
+  Receipt,
+  ArrowDownIcon,
+  ArrowUpIcon,
+  BanknoteIcon,
+  Loader2
+} from "lucide-react";
+import { PageLayout } from "@/components/layout/page-layout";
+import { AnimatedItem } from "@/components/layout/animated-content";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -29,12 +60,53 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Sidebar } from "@/components/layout/sidebar";
+import { Header } from "@/components/layout/header";
+import { AnimatedContent } from "@/components/layout/animated-content";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Skeleton } from "@/components/ui/skeleton";
+
+
+// Form schemas
+const billSchema = z.object({
+  supplierName: z.string().min(1, "Kötelező mező"),
+  invoiceNumber: z.string().min(1, "Kötelező mező"),
+  amount: z.string().min(1, "Kötelező mező"),
+  dueDate: z.string(),
+  category: z.string().min(1, "Kötelező mező"),
+  notes: z.string().optional(),
+});
+
+type BillFormData = z.infer<typeof billSchema>;
 
 export default function Invoices() {
-  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"outgoing" | "incoming">("outgoing");
   const [filter, setFilter] = useState<"all" | "paid" | "pending" | "overdue">("all");
+  const [search, setSearch] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const form = useForm<BillFormData>({
+    resolver: zodResolver(billSchema),
+    defaultValues: {
+      supplierName: "",
+      invoiceNumber: "",
+      amount: "",
+      dueDate: format(new Date(), "yyyy-MM-dd"),
+      category: "",
+      notes: "",
+    },
+  });
+
+  const onSubmit = (data: BillFormData) => {
+    setIsSubmitting(true);
+    // Simulate API call
+    setTimeout(() => {
+      console.log(data);
+      setOpen(false);
+      setIsSubmitting(false);
+      form.reset();
+    }, 1000);
+  };
 
   const { data: orders = [], isLoading: isLoadingOrders } = useQuery<Order[]>({
     queryKey: ["/api/orders"],
@@ -45,8 +117,9 @@ export default function Invoices() {
   });
 
   const isLoading = isLoadingOrders || isLoadingContacts;
-  const invoices = orders.filter(order => order.invoiceNumber);
 
+  // Outgoing invoices data
+  const invoices = orders.filter(order => order.invoiceNumber);
   const filteredInvoices = invoices.filter(invoice => {
     const matchesSearch =
       invoice.invoiceNumber?.toLowerCase().includes(search.toLowerCase()) ||
@@ -78,6 +151,41 @@ export default function Invoices() {
     invoice.status === "pending" && new Date(invoice.orderDate) < new Date(Date.now() - 15 * 24 * 60 * 60 * 1000)
   ).length;
 
+  // Incoming bills data (test data)
+  const bills = [
+    {
+      id: 1,
+      supplierName: "Tech Solutions Kft.",
+      invoiceNumber: "TSK-2024-001",
+      amount: 2499000,
+      dueDate: "2024-02-20",
+      category: "Hardware",
+      notes: "Q1 laptop beszerzés",
+    },
+    {
+      id: 2,
+      supplierName: "PC Parts Hungary",
+      invoiceNumber: "PPH-2024-015",
+      amount: 1377000,
+      dueDate: "2024-02-25",
+      category: "Components",
+      notes: "Alkatrész utánpótlás",
+    },
+    {
+      id: 3,
+      supplierName: "ITGlobal Trade",
+      invoiceNumber: "IGT-2024-008",
+      amount: 899000,
+      dueDate: "2024-03-01",
+      category: "Accessories",
+      notes: "Tartozék csomag",
+    },
+  ];
+
+  const totalBills = bills.reduce((sum, bill) => sum + bill.amount, 0);
+  const pendingBillsCount = bills.length;
+  const avgBillAmount = totalBills / bills.length;
+
   const chartData = Array.from({ length: 30 }, (_, i) => {
     const date = new Date();
     date.setDate(date.getDate() - i);
@@ -91,21 +199,18 @@ export default function Invoices() {
   }).reverse();
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <div className="flex-1">
-        <Header />
-        <AnimatedContent>
-          <main className="p-6">
-            <AnimatedItem>
-              <div className="mb-8">
-                <h1 className="text-3xl font-bold tracking-tight">{t("invoices")}</h1>
-                <p className="text-muted-foreground">
-                  Számlák kezelése és áttekintése
-                </p>
-              </div>
-            </AnimatedItem>
+    <PageLayout
+      title={t("invoices")}
+      description="Számlák kezelése és áttekintése"
+    >
+      <AnimatedItem>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="mb-6">
+          <TabsList>
+            <TabsTrigger value="outgoing">Kimenő számlák</TabsTrigger>
+            <TabsTrigger value="incoming">Bejövő számlák</TabsTrigger>
+          </TabsList>
 
+          <TabsContent value="outgoing">
             <div className="grid gap-4 md:grid-cols-4 mb-6">
               {[
                 {
@@ -152,50 +257,7 @@ export default function Invoices() {
               ))}
             </div>
 
-            <AnimatedItem className="mb-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Bevételek alakulása</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {isLoading ? (
-                    <Skeleton className="h-[300px] w-full" />
-                  ) : (
-                    <div className="h-[300px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={chartData}>
-                          <defs>
-                            <linearGradient id="total" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                              <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                          <XAxis dataKey="date" />
-                          <YAxis />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: "hsl(var(--background))",
-                              border: "1px solid hsl(var(--border))"
-                            }}
-                            formatter={(value: number) => `${value.toLocaleString()} Ft`}
-                          />
-                          <Area
-                            type="monotone"
-                            dataKey="total"
-                            stroke="hsl(var(--primary))"
-                            fillOpacity={1}
-                            fill="url(#total)"
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </AnimatedItem>
-
-            <AnimatedItem className="flex gap-4 mb-6">
+            <div className="flex gap-4 mb-6">
               <Input
                 placeholder="Keresés számlaszám vagy ügyfél alapján..."
                 value={search}
@@ -213,65 +275,259 @@ export default function Invoices() {
                   <SelectItem value="overdue">Késedelmes</SelectItem>
                 </SelectContent>
               </Select>
-            </AnimatedItem>
+            </div>
+
+            {isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Számlaszám</TableHead>
+                    <TableHead>Ügyfél</TableHead>
+                    <TableHead>Dátum</TableHead>
+                    <TableHead>Státusz</TableHead>
+                    <TableHead>Összeg</TableHead>
+                    <TableHead>Fizetési határidő</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredInvoices.map((invoice) => {
+                    const customer = contacts.find(c => c.id === invoice.contactId);
+                    const dueDate = new Date(invoice.orderDate);
+                    dueDate.setDate(dueDate.getDate() + 15);
+                    const isOverdue = invoice.status === "pending" && dueDate < new Date();
+
+                    return (
+                      <TableRow key={invoice.id}>
+                        <TableCell className="font-medium">
+                          {invoice.invoiceNumber}
+                        </TableCell>
+                        <TableCell>{customer?.name}</TableCell>
+                        <TableCell>
+                          {new Date(invoice.orderDate).toLocaleDateString("hu")}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={invoice.status === "completed" ? "default" : "secondary"}
+                            className={isOverdue ? "bg-destructive" : undefined}
+                          >
+                            {isOverdue ? "Késedelmes" : invoice.status === "completed" ? "Kifizetett" : "Függőben"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{parseFloat(invoice.total).toLocaleString()} Ft</TableCell>
+                        <TableCell>
+                          {dueDate.toLocaleDateString("hu")}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </TabsContent>
+
+          <TabsContent value="incoming">
+            <div className="flex justify-end mb-6">
+              <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Új számla
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Új számla hozzáadása</DialogTitle>
+                  </DialogHeader>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="supplierName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Beszállító neve</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="invoiceNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Számlaszám</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="amount"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Összeg (Ft)</FormLabel>
+                            <FormControl>
+                              <Input {...field} type="number" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="dueDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Fizetési határidő</FormLabel>
+                            <FormControl>
+                              <Input {...field} type="date" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="category"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Kategória</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="notes"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Megjegyzések</FormLabel>
+                            <FormControl>
+                              <Textarea {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button type="submit" className="w-full" disabled={isSubmitting}>
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Mentés...
+                          </>
+                        ) : (
+                          'Mentés'
+                        )}
+                      </Button>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3 mb-6">
+              <AnimatedItem>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Összes kifizetendő
+                    </CardTitle>
+                    <BanknoteIcon className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {totalBills.toLocaleString()} Ft
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {pendingBillsCount} db számla
+                    </p>
+                  </CardContent>
+                </Card>
+              </AnimatedItem>
+
+              <AnimatedItem>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Következő fizetés
+                    </CardTitle>
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      2024.02.20
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      5 nap múlva esedékes
+                    </p>
+                  </CardContent>
+                </Card>
+              </AnimatedItem>
+
+              <AnimatedItem>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Átlagos számlaérték
+                    </CardTitle>
+                    <Receipt className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {avgBillAmount.toLocaleString()} Ft
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      az elmúlt 30 napban
+                    </p>
+                  </CardContent>
+                </Card>
+              </AnimatedItem>
+            </div>
 
             <AnimatedItem>
-              {isLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Számlaszám</TableHead>
-                      <TableHead>Ügyfél</TableHead>
-                      <TableHead>Dátum</TableHead>
-                      <TableHead>Státusz</TableHead>
-                      <TableHead>Összeg</TableHead>
-                      <TableHead>Fizetési határidő</TableHead>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Beszállító</TableHead>
+                    <TableHead>Számlaszám</TableHead>
+                    <TableHead>Összeg</TableHead>
+                    <TableHead>Fizetési határidő</TableHead>
+                    <TableHead>Kategória</TableHead>
+                    <TableHead>Megjegyzések</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {bills.map((bill) => (
+                    <TableRow key={bill.id}>
+                      <TableCell className="font-medium">{bill.supplierName}</TableCell>
+                      <TableCell>{bill.invoiceNumber}</TableCell>
+                      <TableCell>{bill.amount.toLocaleString()} Ft</TableCell>
+                      <TableCell>{bill.dueDate}</TableCell>
+                      <TableCell>{bill.category}</TableCell>
+                      <TableCell>{bill.notes}</TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredInvoices.map((invoice) => {
-                      const customer = contacts.find(c => c.id === invoice.contactId);
-                      const dueDate = new Date(invoice.orderDate);
-                      dueDate.setDate(dueDate.getDate() + 15);
-                      const isOverdue = invoice.status === "pending" && dueDate < new Date();
-
-                      return (
-                        <TableRow key={invoice.id}>
-                          <TableCell className="font-medium">
-                            {invoice.invoiceNumber}
-                          </TableCell>
-                          <TableCell>{customer?.name}</TableCell>
-                          <TableCell>
-                            {new Date(invoice.orderDate).toLocaleDateString("hu")}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={invoice.status === "completed" ? "default" : "secondary"}
-                              className={isOverdue ? "bg-destructive" : undefined}
-                            >
-                              {isOverdue ? "Késedelmes" : invoice.status === "completed" ? "Kifizetett" : "Függőben"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{parseFloat(invoice.total).toLocaleString()} Ft</TableCell>
-                          <TableCell>
-                            {dueDate.toLocaleDateString("hu")}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              )}
+                  ))}
+                </TableBody>
+              </Table>
             </AnimatedItem>
-          </main>
-        </AnimatedContent>
-      </div>
-    </div>
+          </TabsContent>
+        </Tabs>
+      </AnimatedItem>
+    </PageLayout>
   );
 }
