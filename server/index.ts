@@ -4,7 +4,15 @@ import { setupVite, serveStatic, log } from "./vite";
 import cors from "cors";
 
 const app = express();
-app.use(cors());
+
+// Configure CORS properly with options
+app.use(cors({
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -42,6 +50,7 @@ app.use((req, res, next) => {
   try {
     const server = registerRoutes(app);
 
+    // Error handling middleware
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       console.error('Server error:', err);
       const status = err.status || err.statusCode || 500;
@@ -55,8 +64,8 @@ app.use((req, res, next) => {
       serveStatic(app);
     }
 
-    const PORT = 5000;
-    server.listen(PORT, "0.0.0.0", () => {
+    const PORT = parseInt(process.env.PORT || "5000");
+    server.listen(PORT, () => {
       log(`Server running at http://0.0.0.0:${PORT}`);
     });
   } catch (error) {
